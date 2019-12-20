@@ -1,0 +1,39 @@
+[package]
+name = "extcap"
+version = "0.0.1"
+authors = ["Tomas Kukosa <tkeksa@gmail.com>"]
+repository = "https://github.com/tkeksa/extcap-rs"
+license = "Apache-2.0 OR MIT"
+description = "Crate for writing extcap Wireshark plugins."
+readme = "README.md"
+edition = "2018"
+
+exclude = [
+  ".github",
+]
+
+[package.metadata.docs.rs]
+all-features = true
+
+[features]
+default = ["ctrl_pipe"]
+ctrl_pipe = ["tokio", "tokio-codec", "tokio-io"]
+
+[dependencies]
+bytes = "0.4.12"
+clap = "2.33.0"
+futures = "0.1.27"
+log = "0.4.8"
+pcap-file = "1.1.1"
+tokio = { version = "0.1.21", optional = true }
+tokio-codec = { version = "0.1.1", optional = true }
+tokio-io = { version = "0.1.12", optional = true }
+
+[dev-dependencies]
+ctrlc = "3.1.3"
+rand = "0.7.2"
+simplelog = "0.7.4"
+
+[[example]]
+name = "tcdump"
+required-features = ["ctrl_pipe"]
