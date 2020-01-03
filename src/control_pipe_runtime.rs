@@ -131,7 +131,7 @@ impl Decoder for ControlMsgCodec {
     type Item = ControlMsg;
     type Error = io::Error;
 
-    fn decode(&mut self, buf: &mut BytesMut) -> Result<Option<ControlMsg>, io::Error> {
+    fn decode(&mut self, buf: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
         if buf.len() < 4 {
             return Ok(None);
         }
@@ -164,7 +164,7 @@ impl Encoder for ControlMsgCodec {
     type Item = ControlMsg;
     type Error = io::Error;
 
-    fn encode(&mut self, msg: ControlMsg, buf: &mut BytesMut) -> Result<(), io::Error> {
+    fn encode(&mut self, msg: Self::Item, buf: &mut BytesMut) -> Result<(), Self::Error> {
         buf.reserve(6 + msg.get_data().len());
         buf.put_u8(b'T');
         buf.put_uint(2 + msg.get_data().len() as u64, 3);

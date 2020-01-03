@@ -1,5 +1,6 @@
 use std::fmt::Display;
 use std::fs::OpenOptions;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -69,22 +70,36 @@ impl ExtcapListener for TestControlDump {
             pipe_out,
         };
         let ctx = Arc::new(Mutex::new(ctx));
+        let running = Arc::new(AtomicBool::new(true));
 
         write_log(&ctx, "Begin");
         write_msg(&ctx, "Begin");
 
         if let Some(pi) = pipe_in {
             let cx = ctx.clone();
+            let r = running.clone();
             let task = pi.for_each(move |msg| {
                 debug!("capture() ctrl msg received {:?}", msg);
                 write_msg(&cx, &format!("{:?}", msg));
                 write_log(&cx, &format!("{:?}", msg));
+                if let ControlCmd::Set = msg.get_command() {
+                    if msg.get_ctrl_num() == 3 {
+                        debug!("Stop pressed");
+                        r.store(false, Ordering::SeqCst);
+                    }
+                }
                 future::ready(())
             });
             tokio::spawn(task);
         }
 
-        thread::sleep(Duration::from_secs(15));
+        loop {
+            if !running.load(Ordering::SeqCst) {
+                debug!("Stop command received");
+                break;
+            }
+            thread::sleep(Duration::from_millis(50));
+        }
 
         write_log(&ctx, "End");
         write_msg(&ctx, "End");
@@ -155,8 +170,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     ex.add_control(
         Control::new_button(ButtonRole::Control)
-            .display("Button 3")
-            .tooltip("B 333"),
+            .display("Stop 3")
+            .tooltip("Stop capture"),
     );
     ex.add_control(Control::new_button(ButtonRole::Logger).display("Log 4"));
     ex.add_control(Control::new_button(ButtonRole::Help).display("Help 5"));
