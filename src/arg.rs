@@ -14,6 +14,7 @@ pub enum IfArgType {
     Selector,
     Radio,
     Multicheck,
+    Timestamp,
 }
 
 impl Default for IfArgType {
@@ -38,6 +39,7 @@ impl IfArgType {
             IfArgType::Selector => "selector",
             IfArgType::Radio => "radio",
             IfArgType::Multicheck => "multicheck",
+            IfArgType::Timestamp => "timestamp",
         }
     }
 }
@@ -134,6 +136,10 @@ impl<'a> IfArg<'a> {
 
     pub fn new_multicheck(name: &'a str) -> Self {
         IfArg::new(IfArgType::Multicheck, name)
+    }
+
+    pub fn new_timestamp(name: &'a str) -> Self {
+        IfArg::new(IfArgType::Timestamp, name)
     }
 
     pub fn display(mut self, display: &'a str) -> Self {
