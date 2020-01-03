@@ -1,6 +1,6 @@
 use std::fs::File;
 
-use futures::sync::mpsc::{Receiver, Sender};
+use futures::channel::mpsc::{Receiver, Sender};
 
 #[cfg(feature = "ctrl_pipe")]
 use crate::control_pipe_runtime::ControlPipeRuntime;

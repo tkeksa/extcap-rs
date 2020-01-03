@@ -1,17 +1,16 @@
+use std::fmt::Display;
 use std::fs::OpenOptions;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use extcap::*;
-use futures::future::Future;
-use futures::stream::Stream;
-use futures::sync::mpsc::Sender;
+use futures::channel::mpsc::Sender;
+use futures::prelude::*;
 use log::{debug, LevelFilter};
 use pcap_file::{pcap::PcapHeader, DataLink, PcapWriter};
 use simplelog::{Config, SimpleLogger, WriteLogger};
-use std::fmt::Display;
-use tokio::runtime::Runtime;
+use tokio;
 
 struct TestControlDump {}
 
@@ -74,25 +73,21 @@ impl ExtcapListener for TestControlDump {
         write_log(&ctx, "Begin");
         write_msg(&ctx, "Begin");
 
-        let mut rt = Runtime::new().unwrap();
-
         if let Some(pi) = pipe_in {
             let cx = ctx.clone();
             let task = pi.for_each(move |msg| {
                 debug!("capture() ctrl msg received {:?}", msg);
                 write_msg(&cx, &format!("{:?}", msg));
                 write_log(&cx, &format!("{:?}", msg));
-                Ok(())
+                future::ready(())
             });
-            rt.spawn(task);
+            tokio::spawn(task);
         }
 
         thread::sleep(Duration::from_secs(15));
 
         write_log(&ctx, "End");
         write_msg(&ctx, "End");
-
-        let _ = rt.shutdown_now().wait();
 
         debug!("capture() finished");
     }
@@ -119,7 +114,8 @@ fn write_log<T: Display>(ctx: &Arc<Mutex<CaptureCtx>>, msg: T) {
     }
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut ex = Extcap::new("tcdump");
     ex.version("0.0.1");
     ex.about("Test extcap controls (Rust extcap example)");
