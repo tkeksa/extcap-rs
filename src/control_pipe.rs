@@ -111,6 +111,7 @@ pub struct ControlPipe {
 }
 
 impl ControlPipe {
+    #[cfg_attr(not(feature = "ctrl_pipe"), allow(unused_variables))]
     pub(crate) fn new(pipe_in: File, pipe_out: File) -> Self {
         #[cfg(feature = "ctrl_pipe")]
         {

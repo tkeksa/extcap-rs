@@ -16,7 +16,7 @@ exclude = [
 all-features = true
 
 [features]
-default = ["ctrl_pipe"]
+default = []
 ctrl_pipe = ["tokio/fs", "tokio-util/codec"]
 
 [dependencies]
