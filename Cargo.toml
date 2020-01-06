@@ -6,6 +6,8 @@ repository = "https://github.com/tkeksa/extcap-rs"
 license = "Apache-2.0 OR MIT"
 description = "Crate for writing extcap Wireshark plugins."
 readme = "README.md"
+keywords = ["extcap", "Wireshark", "pcap"]
+categories = ["command-line-interface"]
 edition = "2018"
 
 exclude = [

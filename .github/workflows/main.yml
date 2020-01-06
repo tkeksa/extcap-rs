@@ -53,4 +53,4 @@ jobs:
       with:
         command: build
         args: ${{ matrix.ftr }} --examples
- 
+
