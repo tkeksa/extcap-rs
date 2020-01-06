@@ -1,19 +1,34 @@
 use crate::print_opt_value;
 
+/// Extcap Argument types
 pub enum IfArgType {
+    /// None or unknown
     None,
+    /// EXTCAP_ARG_INTEGER
     Integer,
+    /// EXTCAP_ARG_UNSIGNED
     Unsigned,
+    /// EXTCAP_ARG_LONG
     Long,
+    /// EXTCAP_ARG_DOUBLE
     Double,
+    /// EXTCAP_ARG_STRING
     String,
+    /// EXTCAP_ARG_PASSWORD
     Password,
+    /// EXTCAP_ARG_BOOLEAN
     Boolean,
+    /// EXTCAP_ARG_BOOLFLAG
     Boolflag,
+    /// EXTCAP_ARG_FILESELECT
     Fileselect,
+    /// EXTCAP_ARG_SELECTOR
     Selector,
+    /// EXTCAP_ARG_RADIO
     Radio,
+    /// EXTCAP_ARG_MULTICHECK
     Multicheck,
+    /// EXTCAP_ARG_TIMESTAMP
     Timestamp,
 }
 
@@ -44,6 +59,7 @@ impl IfArgType {
     }
 }
 
+/// Argument representation
 #[derive(Default)]
 pub struct IfArg<'a> {
     number: usize,
@@ -78,95 +94,114 @@ impl<'a> IfArg<'a> {
         }
     }
 
-    pub fn get_name(&self) -> &'a str {
+    pub(crate) fn get_name(&self) -> &'a str {
         &self.name
     }
 
-    pub fn get_display(&self) -> Option<&'a str> {
+    pub(crate) fn get_display(&self) -> Option<&'a str> {
         self.display
     }
 
-    pub fn get_type(&self) -> &IfArgType {
+    pub(crate) fn get_type(&self) -> &IfArgType {
         &self.atype
     }
 
+    /// Creates a new instance of `IfArg` with 'IfArgType::Integer' type using a string name
     pub fn new_integer(name: &'a str) -> Self {
         IfArg::new(IfArgType::Integer, name)
     }
 
+    /// Creates a new instance of `IfArg` with 'IfArgType::Unsigned' type using a string name
     pub fn new_unsigned(name: &'a str) -> Self {
         IfArg::new(IfArgType::Unsigned, name)
     }
 
+    /// Creates a new instance of `IfArg` with 'IfArgType::Long' type using a string name
     pub fn new_long(name: &'a str) -> Self {
         IfArg::new(IfArgType::Long, name)
     }
 
+    /// Creates a new instance of `IfArg` with 'IfArgType::Double' type using a string name
     pub fn new_double(name: &'a str) -> Self {
         IfArg::new(IfArgType::Double, name)
     }
 
+    /// Creates a new instance of `IfArg` with 'IfArgType::String' type using a string name
     pub fn new_string(name: &'a str) -> Self {
         IfArg::new(IfArgType::String, name)
     }
 
+    /// Creates a new instance of `IfArg` with 'IfArgType::Password' type using a string name
     pub fn new_password(name: &'a str) -> Self {
         IfArg::new(IfArgType::Password, name)
     }
 
+    /// Creates a new instance of `IfArg` with 'IfArgType::Boolean' type using a string name
     pub fn new_boolean(name: &'a str) -> Self {
         IfArg::new(IfArgType::Boolean, name)
     }
 
+    /// Creates a new instance of `IfArg` with 'IfArgType::Boolflag' type using a string name
     pub fn new_boolflag(name: &'a str) -> Self {
         IfArg::new(IfArgType::Boolflag, name)
     }
 
+    /// Creates a new instance of `IfArg` with 'IfArgType::Fileselect' type using a string name
     pub fn new_fileselect(name: &'a str) -> Self {
         IfArg::new(IfArgType::Fileselect, name)
     }
 
+    /// Creates a new instance of `IfArg` with 'IfArgType::Selector' type using a string name
     pub fn new_selector(name: &'a str) -> Self {
         IfArg::new(IfArgType::Selector, name)
     }
 
+    /// Creates a new instance of `IfArg` with 'IfArgType::Radio' type using a string name
     pub fn new_radio(name: &'a str) -> Self {
         IfArg::new(IfArgType::Radio, name)
     }
 
+    /// Creates a new instance of `IfArg` with 'IfArgType::Multicheck' type using a string name
     pub fn new_multicheck(name: &'a str) -> Self {
         IfArg::new(IfArgType::Multicheck, name)
     }
 
+    /// Creates a new instance of `IfArg` with 'IfArgType::Timestamp' type using a string name
     pub fn new_timestamp(name: &'a str) -> Self {
         IfArg::new(IfArgType::Timestamp, name)
     }
 
+    /// Sets the display string
     pub fn display(mut self, display: &'a str) -> Self {
         self.display = Some(display);
         self
     }
 
+    /// Sets the default value
     pub fn default<T: ToString>(mut self, default: &T) -> Self {
         self.default = Some(default.to_string());
         self
     }
 
+    /// Sets the range string
     pub fn range<T: ToString>(mut self, range: &T) -> Self {
         self.range = Some(range.to_string());
         self
     }
 
+    /// Sets the validation regular expression string
     pub fn validation<T: ToString>(mut self, validation: &T) -> Self {
         self.validation = Some(validation.to_string());
         self
     }
 
+    /// Sets the `mustexist` flag for `Fileselect`
     pub fn mustexist(mut self, mustexist: bool) -> Self {
         self.mustexist = Some(mustexist);
         self
     }
 
+    /// Sets the `reload` flag
     pub fn reload(mut self, reload: bool) -> Self {
         self.reload = Some(reload);
         self
@@ -176,21 +211,25 @@ impl<'a> IfArg<'a> {
         self.reload.unwrap_or_default()
     }
 
+    /// Sets the placeholder string
     pub fn placeholder(mut self, placeholder: &str) -> Self {
         self.placeholder = Some(placeholder.to_owned());
         self
     }
 
+    /// Sets the tooltip string
     pub fn tooltip(mut self, tooltip: &str) -> Self {
         self.tooltip = Some(tooltip.to_owned());
         self
     }
 
+    /// Sets the group
     pub fn group(mut self, group: &str) -> Self {
         self.group = Some(group.to_owned());
         self
     }
 
+    /// Adds a value
     pub fn add_val(&mut self, val: IfArgVal) {
         self.vals.push(val);
     }
@@ -226,6 +265,7 @@ impl<'a> IfArg<'a> {
     }
 }
 
+/// Argument value representation
 #[derive(Default)]
 pub struct IfArgVal {
     arg: usize,
@@ -235,6 +275,7 @@ pub struct IfArgVal {
 }
 
 impl IfArgVal {
+    /// Creates a new instance of `IfArgVal` using a string value
     pub fn new<T: ToString>(value: T) -> Self {
         IfArgVal {
             arg: usize::max_value(),
@@ -247,11 +288,13 @@ impl IfArgVal {
         self.arg = arg;
     }
 
+    /// Sets the display string
     pub fn display(mut self, display: &str) -> Self {
         self.display = Some(display.to_owned());
         self
     }
 
+    /// Sets the default flag
     pub fn default(mut self, default: bool) -> Self {
         self.default = Some(default);
         self

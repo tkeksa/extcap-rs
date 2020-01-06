@@ -1,3 +1,14 @@
+//! This crate helps writing [extcap][wireshark-extcap] plugins for [Wireshark][wireshark].
+//!
+//! See [Extcap: Developer Guide][wireshark-extcap-dev] also.
+//!
+//! [wireshark]: https://www.wireshark.org/
+//! [wireshark-extcap]: https://www.wireshark.org/docs/man-pages/extcap.html
+//! [wireshark-extcap-dev]:https://www.wireshark.org/docs/wsdg_html_chunked/ChCaptureExtcap.html
+
+#![deny(missing_docs)]
+#![deny(warnings)]
+
 use std::collections::HashSet;
 use std::fmt::Display;
 use std::fs::File;
@@ -46,8 +57,11 @@ fn print_opt_value<T: Display>(name: &str, value: &Option<T>) {
     }
 }
 
+/// Possible writers for `PcapWriter`
 pub enum ExtcapWriter {
+    /// Writer to stdout
     EWStdout(Stdout),
+    /// Writer to file
     EWFile(File),
 }
 
@@ -84,9 +98,13 @@ fn create_pcap_writer(fifo: &str, pcap_header: PcapHeader) -> io::Result<PcapWri
         .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("{:?}", e)))
 }
 
+/// A trait for Extcap callbacks
 pub trait ExtcapListener {
+    /// Log initialization
     fn init_log(&mut self, _extcap: &Extcap, _debug: bool, _debug_file: Option<&str>) {}
+    /// Interfaces update if it depends on passed options
     fn update_interfaces(&mut self, _extcap: &mut Extcap) {}
+    /// Interface config reload required for some argument(s)
     fn reload_option(
         &mut self,
         _extcap: &Extcap,
@@ -95,7 +113,9 @@ pub trait ExtcapListener {
     ) -> Option<Vec<IfArgVal>> {
         None
     }
+    /// Get capture header from listener
     fn capture_header(&mut self, extcap: &Extcap, ifc: &IFace) -> PcapHeader;
+    /// Main capture loop
     fn capture(
         &mut self,
         extcap: &Extcap,
@@ -105,13 +125,25 @@ pub trait ExtcapListener {
     );
 }
 
+/// Extcap steps
 #[derive(Debug)]
 pub enum ExtcapStep {
+    /// Not determined
     None,
+    /// Query for available interfaces
     QueryIfaces,
+    /// Ask for DLT’s to each interface
     QueryDlts,
-    ConfigIface { reload: bool },
-    Capture { ctrl_pipe: bool },
+    /// The extcap configuration interface
+    ConfigIface {
+        /// Reload of some argument invoked
+        reload: bool,
+    },
+    /// The capture process
+    Capture {
+        /// Control pipes available
+        ctrl_pipe: bool,
+    },
 }
 
 impl Default for ExtcapStep {
@@ -120,8 +152,10 @@ impl Default for ExtcapStep {
     }
 }
 
+/// Extcap specific result
 pub type ExtcapResult<T> = Result<T, ExtcapError>;
 
+/// Exctcap representation
 #[derive(Default)]
 pub struct Extcap<'a> {
     step: ExtcapStep,
@@ -139,6 +173,7 @@ pub struct Extcap<'a> {
 }
 
 impl<'a> Extcap<'a> {
+    /// Creates a new instance of an `Extcap` requiring a name.
     pub fn new(name: &'a str) -> Self {
         let app = App::new(name)
             .setting(AppSettings::UnifiedHelpMessage)
@@ -209,6 +244,7 @@ impl<'a> Extcap<'a> {
         }
     }
 
+    /// Get current step for which it has been invoked from Wireshark
     pub fn get_step(&self) -> &ExtcapStep {
         &self.step
     }
@@ -228,37 +264,45 @@ impl<'a> Extcap<'a> {
         self.app = Some(self.take_app().arg(arg));
     }
 
+    /// Get parsed command line arguments. Provided by `clap::App`.
     pub fn get_matches(&self) -> &ArgMatches<'a> {
         self.matches
             .as_ref()
             .expect("Extcap invalid state: not run yet")
     }
 
+    /// Sets the version string
     pub fn version(&mut self, ver: &'a str) {
         self.version = Some(ver.to_owned());
         self.update_app(|a| a.version(ver));
     }
 
+    /// Sets the help URI
     pub fn help(&mut self, helppage: &'a str) {
         self.helppage = Some(String::from(helppage));
     }
 
+    /// Sets the author string
     pub fn author(&mut self, author: &'a str) {
         self.update_app(|a| a.author(author));
     }
 
+    /// Sets the about string
     pub fn about(&mut self, about: &'a str) {
         self.update_app(|a| a.about(about));
     }
 
+    /// Sets the usage string
     pub fn usage(&mut self, usage: &'a str) {
         self.update_app(|a| a.usage(usage));
     }
 
+    /// Sets the after-help string
     pub fn after_help(&mut self, help: &'a str) {
         self.update_app(|a| a.after_help(help));
     }
 
+    /// Adds an interface
     pub fn add_interface(&mut self, ifc: IFace<'a>) {
         if ifc.has_reloadable_arg() && !self.reload_opt {
             self.config_reload_opt();
@@ -286,7 +330,7 @@ impl<'a> Extcap<'a> {
         &mut self.interfaces[ifidx]
     }
 
-    pub fn config_arg(&mut self, ifa: &IfArg<'a>) {
+    pub(crate) fn config_arg(&mut self, ifa: &IfArg<'a>) {
         if self.app_args.contains(ifa.get_name()) {
             return;
         }
@@ -305,7 +349,7 @@ impl<'a> Extcap<'a> {
         self.app_args.insert(ifa.get_name().to_owned());
     }
 
-    pub fn config_reload_opt(&mut self) {
+    pub(crate) fn config_reload_opt(&mut self) {
         if self.reload_opt {
             return;
         }
@@ -322,7 +366,7 @@ impl<'a> Extcap<'a> {
         self.app_args.insert(OPT_EXTCAP_RELOAD_OPTION.to_owned());
     }
 
-    pub fn config_control(&mut self) {
+    pub(crate) fn config_control(&mut self) {
         if self.control {
             return;
         }
@@ -347,6 +391,7 @@ impl<'a> Extcap<'a> {
         self.app_args.insert(OPT_EXTCAP_CONTROL_OUT.to_owned());
     }
 
+    /// Configures debug arguments `debug` and `debug-file` for all interfaces
     pub fn config_debug(&mut self) {
         if self.ifc_debug {
             return;
@@ -368,6 +413,7 @@ impl<'a> Extcap<'a> {
         self.app_args.insert(OPT_DEBUG_FILE.to_owned());
     }
 
+    /// Adds a control
     pub fn add_control(&mut self, mut control: Control) {
         if !self.control {
             self.config_control();
@@ -393,6 +439,7 @@ impl<'a> Extcap<'a> {
         self.controls.iter().for_each(Control::print_control);
     }
 
+    /// Starts main capture loop
     pub fn run<T: ExtcapListener>(mut self, mut listener: T) -> ExtcapResult<()> {
         // Save matches for listener
         self.matches = Some(self.take_app().get_matches_safe()?);

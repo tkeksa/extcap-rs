@@ -13,6 +13,7 @@ enum ExtcapErrorKind {
     UnknownStepRequested,
 }
 
+/// Extcap specific error
 #[derive(Debug)]
 pub struct ExtcapError {
     kind: ExtcapErrorKind,

@@ -5,18 +5,30 @@ use futures::channel::mpsc::{Receiver, Sender};
 #[cfg(feature = "ctrl_pipe")]
 use crate::control_pipe_runtime::ControlPipeRuntime;
 
+/// Interface toolbar Control commands
 #[derive(Debug)]
 pub enum ControlCmd {
+    /// commandControlInitialized
     Initialized,
+    /// commandControlSet
     Set,
+    /// commandControlAdd
     Add,
+    /// commandControlRemove
     Remove,
+    /// commandControlEnable
     Enable,
+    /// commandControlDisable
     Disable,
+    /// commandStatusMessage
     StatusbarMessage,
+    /// commandInformationMessage
     InformationMessage,
+    /// commandWarningMessage
     WarningMessage,
+    /// commandErrorMessage
     ErrorMessage,
+    /// Unknown
     Unknown(u8),
 }
 
@@ -56,6 +68,7 @@ impl From<&ControlCmd> for u8 {
     }
 }
 
+/// Control protocol message
 #[derive(Debug)]
 pub struct ControlMsg {
     ctrl_num: u8,
@@ -64,6 +77,7 @@ pub struct ControlMsg {
 }
 
 impl ControlMsg {
+    /// Creates a new instance of `ControlMsg`
     pub fn new(ctrl_num: u8, command: ControlCmd, data: &[u8]) -> Self {
         Self {
             ctrl_num,
@@ -72,19 +86,23 @@ impl ControlMsg {
         }
     }
 
+    /// Get the Control number
     pub fn get_ctrl_num(&self) -> u8 {
         self.ctrl_num
     }
 
+    /// Get the Control command type
     pub fn get_command(&self) -> &ControlCmd {
         &self.command
     }
 
+    /// Get the data
     pub fn get_data(&self) -> &[u8] {
         &self.data
     }
 }
 
+/// Control pipes
 pub type CtrlPipes = (Receiver<ControlMsg>, Sender<ControlMsg>);
 
 pub struct ControlPipe {

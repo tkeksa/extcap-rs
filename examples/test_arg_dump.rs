@@ -103,7 +103,7 @@ impl ExtcapListener for TestArgDump {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut ex = Extcap::new("tadump");
+    let mut ex = Extcap::new("test_arg_dump");
     ex.version("0.0.1");
     ex.about("Test extcap arguments (Rust extcap example)");
     ex.config_debug();

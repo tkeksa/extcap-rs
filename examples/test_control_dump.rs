@@ -131,7 +131,7 @@ fn write_log<T: Display>(ctx: &Arc<Mutex<CaptureCtx>>, msg: T) {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut ex = Extcap::new("tcdump");
+    let mut ex = Extcap::new("test_control_dump");
     ex.version("0.0.1");
     ex.about("Test extcap controls (Rust extcap example)");
     ex.help("http://abcd");

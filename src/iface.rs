@@ -3,6 +3,7 @@ use pcap_file::DataLink;
 use crate::arg::IfArg;
 use crate::print_opt_value;
 
+/// Interface representation
 #[derive(Default)]
 pub struct IFace<'a> {
     interface: String,
@@ -15,6 +16,7 @@ pub struct IFace<'a> {
 }
 
 impl<'a> IFace<'a> {
+    /// Creates a new instance of `IFace` using a string name
     pub fn new(interface: &str) -> Self {
         Self {
             interface: interface.to_owned(),
@@ -27,26 +29,31 @@ impl<'a> IFace<'a> {
         &self.interface
     }
 
+    /// Sets the description
     pub fn description(mut self, descr: &str) -> Self {
         self.descr = Some(descr.to_owned());
         self
     }
 
+    /// Sets the DLT
     pub fn dlt(mut self, dlt: u32) -> Self {
         self.dlt = dlt;
         self
     }
 
+    /// Sets the DLT name
     pub fn dltname(mut self, dltname: &str) -> Self {
         self.dltname = Some(dltname.to_owned());
         self
     }
 
+    /// Sets the DLT description
     pub fn dltdescription(mut self, dltdescr: &str) -> Self {
         self.dltdescr = Some(dltdescr.to_owned());
         self
     }
 
+    /// Adds argument
     pub fn add_arg(&mut self, mut arg: IfArg<'a>) {
         arg.set_number(self.args.len());
         self.args.push(arg);
@@ -76,6 +83,7 @@ impl<'a> IFace<'a> {
         self.debug
     }
 
+    /// Configures debug arguments `debug` and `debug-file`
     pub fn config_debug(&mut self) {
         if self.debug {
             return;

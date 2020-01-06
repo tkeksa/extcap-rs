@@ -1,9 +1,14 @@
 use crate::print_opt_value;
 
+/// Button roles
 pub enum ButtonRole {
+    /// INTERFACE_ROLE_CONTROL
     Control,
+    /// INTERFACE_ROLE_LOGGER
     Logger,
+    /// INTERFACE_ROLE_HELP
     Help,
+    /// INTERFACE_ROLE_RESTORE
     Restore,
 }
 
@@ -18,11 +23,17 @@ impl ButtonRole {
     }
 }
 
+/// Interface toolbar Control types
 pub enum ControlType {
+    /// None or unknown
     None,
+    /// INTERFACE_TYPE_BOOLEAN
     Boolean,
+    /// INTERFACE_TYPE_BUTTON
     Button(ButtonRole),
+    /// INTERFACE_TYPE_SELECTOR
     Selector,
+    /// INTERFACE_TYPE_STRING
     String,
 }
 
@@ -44,6 +55,7 @@ impl ControlType {
     }
 }
 
+/// Control representation
 #[derive(Default)]
 pub struct Control {
     number: usize,
@@ -73,52 +85,63 @@ impl Control {
         }
     }
 
+    /// Creates a new instance of `Control` with 'ControlType::Boolean' type
     pub fn new_boolean() -> Self {
         Control::new(ControlType::Boolean)
     }
 
+    /// Creates a new instance of `Control` with 'ControlType::Button' type
     pub fn new_button(role: ButtonRole) -> Self {
         Control::new(ControlType::Button(role))
     }
 
+    /// Creates a new instance of `Control` with 'ControlType::Selector' type
     pub fn new_selector() -> Self {
         Control::new(ControlType::Selector)
     }
 
+    /// Creates a new instance of `Control` with 'ControlType::String' type
     pub fn new_string() -> Self {
         Control::new(ControlType::String)
     }
 
+    /// Sets the display string
     pub fn display(mut self, display: &str) -> Self {
         self.display = Some(display.to_owned());
         self
     }
 
+    /// Sets the default value
     pub fn default<T: ToString>(mut self, default: &T) -> Self {
         self.default = Some(default.to_string());
         self
     }
 
+    /// Sets the range string
     pub fn range<T: ToString>(mut self, range: &T) -> Self {
         self.range = Some(range.to_string());
         self
     }
 
+    /// Sets the validation regular expression string
     pub fn validation<T: ToString>(mut self, validation: &T) -> Self {
         self.validation = Some(validation.to_string());
         self
     }
 
+    /// Sets the tooltip string
     pub fn tooltip(mut self, tooltip: &str) -> Self {
         self.tooltip = Some(tooltip.to_owned());
         self
     }
 
+    /// Sets the placeholder string
     pub fn placeholder(mut self, placeholder: &str) -> Self {
         self.placeholder = Some(placeholder.to_owned());
         self
     }
 
+    /// Adds a value
     pub fn add_val(&mut self, val: ControlVal) {
         self.vals.push(val);
     }
@@ -144,6 +167,7 @@ impl Control {
     }
 }
 
+/// Control value representation
 #[derive(Default)]
 pub struct ControlVal {
     control: usize,
@@ -153,6 +177,7 @@ pub struct ControlVal {
 }
 
 impl ControlVal {
+    /// Creates a new instance of `ControlVal` using a string value
     pub fn new<T: ToString>(value: T) -> Self {
         ControlVal {
             control: usize::max_value(),
@@ -165,11 +190,13 @@ impl ControlVal {
         self.control = control;
     }
 
+    /// Sets the display string
     pub fn display(mut self, display: &str) -> Self {
         self.display = Some(display.to_owned());
         self
     }
 
+    /// Sets the default flag
     pub fn default(mut self, default: bool) -> Self {
         self.default = Some(default);
         self
