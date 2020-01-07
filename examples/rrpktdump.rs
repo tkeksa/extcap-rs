@@ -142,7 +142,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     ex.help("http://abcd");
     ex.usage(USAGE_STR);
     ex.after_help(AFTER_HELP_STR);
-    ex.config_debug();
 
     // Interface
     let mut rrpkt = IFace::new("rrpkt")

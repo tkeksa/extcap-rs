@@ -123,7 +123,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     ex.help("http://abcd");
     ex.usage(USAGE_STR);
     ex.after_help(AFTER_HELP_STR);
-    ex.config_debug();
 
     // Interface
     let mut rudump = IFace::new("rudump")

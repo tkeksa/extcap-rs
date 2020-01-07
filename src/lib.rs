@@ -391,8 +391,7 @@ impl<'a> Extcap<'a> {
         self.app_args.insert(OPT_EXTCAP_CONTROL_OUT.to_owned());
     }
 
-    /// Configures debug arguments `debug` and `debug-file` for all interfaces
-    pub fn config_debug(&mut self) {
+    fn config_debug(&mut self) {
         if self.ifc_debug {
             return;
         }

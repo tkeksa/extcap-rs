@@ -135,7 +135,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     ex.version("0.0.1");
     ex.about("Test extcap controls (Rust extcap example)");
     ex.help("http://abcd");
-    ex.config_debug();
 
     // Interfaces
     let mut tcdump1 = IFace::new("tcdump1")
