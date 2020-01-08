@@ -1,3 +1,4 @@
+//!
 //! This crate helps writing [extcap][wireshark-extcap] plugins for [Wireshark][wireshark].
 //!
 //! See [Extcap: Developer Guide][wireshark-extcap-dev] also.
@@ -5,6 +6,34 @@
 //! [wireshark]: https://www.wireshark.org/
 //! [wireshark-extcap]: https://www.wireshark.org/docs/man-pages/extcap.html
 //! [wireshark-extcap-dev]:https://www.wireshark.org/docs/wsdg_html_chunked/ChCaptureExtcap.html
+//!
+//! ## Quick Example
+//! ```
+//! use extcap::{Extcap, ExtcapListener, ExtcapWriter, IFace, CtrlPipes};
+//! use pcap_file::{pcap::PcapHeader, DataLink, PcapWriter};
+//!
+//! struct HelloDump {}
+//!
+//! impl ExtcapListener for HelloDump {
+//!     fn capture_header(&mut self, extcap: &Extcap, ifc: &IFace) -> PcapHeader {
+//!         PcapHeader { datalink: DataLink::USER10, ..Default::default() }
+//!     }
+//!
+//!     fn capture(&mut self, extcap: &Extcap, ifc: &IFace, mut pcap_writer: PcapWriter<ExtcapWriter>, ctrl_pipes: Option<CtrlPipes>) {
+//!         let pkt = b"Hello Extcap!";
+//!         pcap_writer.write(0, 0, pkt, pkt.len() as u32);
+//!     }
+//! }
+//!
+//! fn main() -> Result<(), Box<dyn std::error::Error>> {
+//!     let mut ex = Extcap::new("hellodump");
+//!     ex.add_interface(IFace::new("helloif"));
+//!     ex.run(HelloDump {});
+//!     Ok(())
+//! }
+//! ```
+//! More examples can be found in the `examples` directory
+//!
 
 #![deny(missing_docs)]
 #![deny(warnings)]
