@@ -9,7 +9,7 @@
 //!
 //! ## Quick Example
 //! ```
-//! use extcap::{Extcap, ExtcapListener, ExtcapWriter, IFace, CtrlPipes};
+//! use extcap::{Extcap, ExtcapListener, ExtcapResult, ExtcapWriter, IFace, CtrlPipes};
 //! use pcap_file::{pcap::PcapHeader, DataLink, PcapWriter};
 //!
 //! struct HelloDump {}
@@ -19,9 +19,10 @@
 //!         PcapHeader { datalink: DataLink::USER10, ..Default::default() }
 //!     }
 //!
-//!     fn capture(&mut self, extcap: &Extcap, ifc: &IFace, mut pcap_writer: PcapWriter<ExtcapWriter>, ctrl_pipes: Option<CtrlPipes>) {
+//!     fn capture(&mut self, extcap: &Extcap, ifc: &IFace, mut pcap_writer: PcapWriter<ExtcapWriter>, ctrl_pipes: Option<CtrlPipes>) -> ExtcapResult<()> {
 //!         let pkt = b"Hello Extcap!";
 //!         pcap_writer.write(0, 0, pkt, pkt.len() as u32);
+//!         Ok(())
 //!     }
 //! }
 //!
@@ -151,7 +152,7 @@ pub trait ExtcapListener {
         ifc: &IFace,
         pcap_writer: PcapWriter<ExtcapWriter>,
         ctrl_pipes: Option<CtrlPipes>,
-    );
+    ) -> ExtcapResult<()>;
 }
 
 /// Extcap steps
@@ -634,12 +635,12 @@ impl<'a> Extcap<'a> {
                 "without"
             }
         );
-        listener.capture(self, ifc, pw, ctrl_pipe);
-        debug!("capture finished");
+        let res = listener.capture(self, ifc, pw, ctrl_pipe);
+        debug!("capture finished: {:?}", res);
         if let Some(cp) = control_pipe {
             cp.stop();
         }
 
-        Ok(())
+        res
     }
 }

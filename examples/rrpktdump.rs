@@ -73,7 +73,7 @@ impl ExtcapListener for RRPktDump {
         _ifc: &IFace,
         mut pcap_writer: PcapWriter<ExtcapWriter>,
         _ctrp_pipes: Option<CtrlPipes>,
-    ) {
+    ) -> ExtcapResult<()> {
         let maxbytes = extcap
             .get_matches()
             .value_of(OPT_MAXBYTES)
@@ -132,6 +132,7 @@ impl ExtcapListener for RRPktDump {
         }
 
         debug!("capture() finished");
+        Ok(())
     }
 }
 

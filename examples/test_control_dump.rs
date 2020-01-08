@@ -57,7 +57,7 @@ impl ExtcapListener for TestControlDump {
         _ifc: &IFace,
         pcap_writer: PcapWriter<ExtcapWriter>,
         ctrl_pipes: Option<CtrlPipes>,
-    ) {
+    ) -> ExtcapResult<()> {
         debug!("capture()");
 
         let (pipe_in, pipe_out) = if let Some((pi, po)) = ctrl_pipes {
@@ -105,6 +105,7 @@ impl ExtcapListener for TestControlDump {
         write_msg(&ctx, "End");
 
         debug!("capture() finished");
+        Ok(())
     }
 }
 

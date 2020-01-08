@@ -61,7 +61,7 @@ impl ExtcapListener for TestSerialDump {
         _ifc: &IFace,
         pcap_writer: PcapWriter<ExtcapWriter>,
         _ctrl_pipes: Option<CtrlPipes>,
-    ) {
+    ) -> ExtcapResult<()> {
         debug!("capture()");
 
         // Log list of available ports (already used earlier but now it can be written into log file)
@@ -120,6 +120,7 @@ impl ExtcapListener for TestSerialDump {
         }
 
         debug!("capture() finished");
+        Ok(())
     }
 }
 

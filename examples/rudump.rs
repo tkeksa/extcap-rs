@@ -70,7 +70,7 @@ impl ExtcapListener for RUdpDump {
         _ifc: &IFace,
         mut pcap_writer: PcapWriter<ExtcapWriter>,
         _ctrl_pipes: Option<CtrlPipes>,
-    ) {
+    ) -> ExtcapResult<()> {
         let port = extcap
             .get_matches()
             .value_of(OPT_PORT)
@@ -113,6 +113,7 @@ impl ExtcapListener for RUdpDump {
         }
 
         debug!("capture() finished");
+        Ok(())
     }
 }
 

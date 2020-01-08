@@ -78,7 +78,7 @@ impl ExtcapListener for TestArgDump {
         _ifc: &IFace,
         mut pcap_writer: PcapWriter<ExtcapWriter>,
         _ctrl_pipes: Option<CtrlPipes>,
-    ) {
+    ) -> ExtcapResult<()> {
         let mut msg = "Test arguments:\n".to_string();
         for a in &[OPT_SERVER, OPT_DLT_MAX, OPT_DLT] {
             if let Some(v) = extcap.get_matches().value_of(a) {
@@ -99,6 +99,7 @@ impl ExtcapListener for TestArgDump {
         );
 
         debug!("capture() finished");
+        Ok(())
     }
 }
 
