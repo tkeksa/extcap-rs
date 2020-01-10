@@ -2,7 +2,6 @@ use std::fs::File;
 
 use futures::channel::mpsc::{Receiver, Sender};
 
-#[cfg(feature = "ctrl_pipe")]
 use crate::control_pipe_runtime::ControlPipeRuntime;
 
 /// Interface toolbar Control commands
@@ -106,44 +105,21 @@ impl ControlMsg {
 pub type CtrlPipes = (Receiver<ControlMsg>, Sender<ControlMsg>);
 
 pub struct ControlPipe {
-    #[cfg(feature = "ctrl_pipe")]
     runtime: ControlPipeRuntime,
 }
 
 impl ControlPipe {
-    #[cfg_attr(not(feature = "ctrl_pipe"), allow(unused_variables))]
     pub(crate) fn new(pipe_in: File, pipe_out: File) -> Self {
-        #[cfg(feature = "ctrl_pipe")]
-        {
-            Self {
-                runtime: ControlPipeRuntime::new(pipe_in, pipe_out),
-            }
-        }
-        #[cfg(not(feature = "ctrl_pipe"))]
-        {
-            panic!("ctrl_pipe feature not enabled");
+        Self {
+            runtime: ControlPipeRuntime::new(pipe_in, pipe_out),
         }
     }
 
     pub(crate) fn start(&mut self) -> CtrlPipes {
-        #[cfg(feature = "ctrl_pipe")]
-        {
-            self.runtime.start()
-        }
-        #[cfg(not(feature = "ctrl_pipe"))]
-        {
-            panic!("ctrl_pipe feature not enabled");
-        }
+        self.runtime.start()
     }
 
     pub(crate) fn stop(self) {
-        #[cfg(feature = "ctrl_pipe")]
-        {
-            self.runtime.stop();
-        }
-        #[cfg(not(feature = "ctrl_pipe"))]
-        {
-            panic!("ctrl_pipe feature not enabled");
-        }
+        self.runtime.stop();
     }
 }

@@ -77,7 +77,6 @@ impl ExtcapListener for TestArgDump {
         extcap: &Extcap,
         _ifc: &IFace,
         mut pcap_writer: PcapWriter<ExtcapWriter>,
-        _ctrl_pipes: Option<CtrlPipes>,
     ) -> ExtcapResult<()> {
         let mut msg = "Test arguments:\n".to_string();
         for a in &[OPT_SERVER, OPT_DLT_MAX, OPT_DLT] {

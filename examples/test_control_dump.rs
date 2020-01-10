@@ -51,7 +51,7 @@ impl ExtcapListener for TestControlDump {
         }
     }
 
-    fn capture(
+    fn capture_with_ctrl(
         &mut self,
         _extcap: &Extcap,
         _ifc: &IFace,

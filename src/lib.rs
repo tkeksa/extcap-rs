@@ -9,7 +9,7 @@
 //!
 //! ## Quick Example
 //! ```
-//! use extcap::{Extcap, ExtcapListener, ExtcapResult, ExtcapWriter, IFace, CtrlPipes};
+//! use extcap::{Extcap, ExtcapListener, ExtcapResult, ExtcapWriter, IFace};
 //! use pcap_file::{pcap::PcapHeader, DataLink, PcapWriter};
 //!
 //! struct HelloDump {}
@@ -19,7 +19,7 @@
 //!         PcapHeader { datalink: DataLink::USER10, ..Default::default() }
 //!     }
 //!
-//!     fn capture(&mut self, extcap: &Extcap, ifc: &IFace, mut pcap_writer: PcapWriter<ExtcapWriter>, ctrl_pipes: Option<CtrlPipes>) -> ExtcapResult<()> {
+//!     fn capture(&mut self, extcap: &Extcap, ifc: &IFace, mut pcap_writer: PcapWriter<ExtcapWriter>) -> ExtcapResult<()> {
 //!         let pkt = b"Hello Extcap!";
 //!         pcap_writer.write(0, 0, pkt, pkt.len() as u32);
 //!         Ok(())
@@ -45,7 +45,7 @@ use std::fs::File;
 use std::io::{self, Stdout, Write};
 
 use clap::{App, AppSettings, Arg, ArgGroup, ArgMatches};
-use log::{debug, error, warn};
+use log::{debug, warn};
 use pcap_file::pcap::{PcapHeader, PcapWriter};
 
 mod error;
@@ -60,8 +60,11 @@ pub use crate::arg::{IfArg, IfArgType, IfArgVal};
 mod control;
 pub use crate::control::{ButtonRole, Control, ControlType, ControlVal};
 
+#[cfg(feature = "ctrl_pipe")]
 mod control_pipe;
+#[cfg(feature = "ctrl_pipe")]
 use crate::control_pipe::ControlPipe;
+#[cfg(feature = "ctrl_pipe")]
 pub use crate::control_pipe::{ControlCmd, ControlMsg, CtrlPipes};
 
 #[cfg(feature = "ctrl_pipe")]
@@ -111,6 +114,7 @@ impl Write for ExtcapWriter {
     }
 }
 
+#[cfg(feature = "ctrl_pipe")]
 fn create_control_pipe(ctrl_in: &str, ctrl_out: &str) -> io::Result<ControlPipe> {
     Ok(ControlPipe::new(
         File::open(ctrl_in)?,
@@ -132,8 +136,10 @@ fn create_pcap_writer(fifo: &str, pcap_header: PcapHeader) -> io::Result<PcapWri
 pub trait ExtcapListener {
     /// Log initialization
     fn init_log(&mut self, _extcap: &Extcap, _debug: bool, _debug_file: Option<&str>) {}
+
     /// Interfaces update if it depends on passed options
     fn update_interfaces(&mut self, _extcap: &mut Extcap) {}
+
     /// Interface config reload required for some argument(s)
     fn reload_option(
         &mut self,
@@ -143,16 +149,31 @@ pub trait ExtcapListener {
     ) -> Option<Vec<IfArgVal>> {
         None
     }
+
     /// Get capture header from listener
     fn capture_header(&mut self, extcap: &Extcap, ifc: &IFace) -> PcapHeader;
+
     /// Main capture loop
     fn capture(
+        &mut self,
+        _extcap: &Extcap,
+        _ifc: &IFace,
+        _pcap_writer: PcapWriter<ExtcapWriter>,
+    ) -> ExtcapResult<()> {
+        unimplemented!()
+    }
+
+    /// Main capture loop with optional `CtrlPipes`
+    #[cfg(feature = "ctrl_pipe")]
+    fn capture_with_ctrl(
         &mut self,
         extcap: &Extcap,
         ifc: &IFace,
         pcap_writer: PcapWriter<ExtcapWriter>,
-        ctrl_pipes: Option<CtrlPipes>,
-    ) -> ExtcapResult<()>;
+        _ctrl_pipes: Option<CtrlPipes>,
+    ) -> ExtcapResult<()> {
+        self.capture(extcap, ifc, pcap_writer)
+    }
 }
 
 /// Extcap steps
@@ -606,40 +627,52 @@ impl<'a> Extcap<'a> {
             fifo,
             capture_filter.unwrap_or_default()
         );
-        let control_in = self.get_matches().value_of(OPT_EXTCAP_CONTROL_IN);
-        let control_out = self.get_matches().value_of(OPT_EXTCAP_CONTROL_OUT);
-        let mut control_pipe = if let (Some(ctrl_in), Some(ctrl_out)) = (control_in, control_out) {
-            debug!("capture with control in={} out={}", ctrl_in, ctrl_out);
-            match create_control_pipe(ctrl_in, ctrl_out) {
-                Ok(ctrl_pipe) => Some(ctrl_pipe),
-                Err(e) => {
-                    error!(
-                        "create_control_pipe(ctrl_in={}, ctrl_out={}), failed with error {}",
-                        ctrl_in, ctrl_out, e
-                    );
-                    None
+        #[cfg(feature = "ctrl_pipe")]
+        let mut control_pipe = {
+            let control_in = self.get_matches().value_of(OPT_EXTCAP_CONTROL_IN);
+            let control_out = self.get_matches().value_of(OPT_EXTCAP_CONTROL_OUT);
+            if let (Some(ctrl_in), Some(ctrl_out)) = (control_in, control_out) {
+                debug!("capture with control in={} out={}", ctrl_in, ctrl_out);
+                match create_control_pipe(ctrl_in, ctrl_out) {
+                    Ok(ctrl_pipe) => Some(ctrl_pipe),
+                    Err(e) => {
+                        warn!(
+                            "create_control_pipe(ctrl_in={}, ctrl_out={}), failed with error {}",
+                            ctrl_in, ctrl_out, e
+                        );
+                        None
+                    }
                 }
+            } else {
+                None
             }
-        } else {
-            None
         };
         let ph = listener.capture_header(self, ifc);
         debug!("capture pcap header: {:?}", ph);
         let pw = create_pcap_writer(fifo, ph)?;
-        let ctrl_pipe = control_pipe.as_mut().map(control_pipe::ControlPipe::start);
-        debug!(
-            "capture starting {} ctrl pipes",
-            if ctrl_pipe.is_some() {
-                "with"
-            } else {
-                "without"
+        #[cfg(feature = "ctrl_pipe")]
+        let res = {
+            let ctrl_pipe = control_pipe.as_mut().map(control_pipe::ControlPipe::start);
+            debug!(
+                "capture starting {} ctrl pipes",
+                if ctrl_pipe.is_some() {
+                    "with"
+                } else {
+                    "without"
+                }
+            );
+            let res = listener.capture_with_ctrl(self, ifc, pw, ctrl_pipe);
+            if let Some(cp) = control_pipe {
+                cp.stop();
             }
-        );
-        let res = listener.capture(self, ifc, pw, ctrl_pipe);
+            res
+        };
+        #[cfg(not(feature = "ctrl_pipe"))]
+        let res = {
+            debug!("capture starting");
+            listener.capture(self, ifc, pw)
+        };
         debug!("capture finished: {:?}", res);
-        if let Some(cp) = control_pipe {
-            cp.stop();
-        }
 
         res
     }

@@ -72,7 +72,6 @@ impl ExtcapListener for RRPktDump {
         extcap: &Extcap,
         _ifc: &IFace,
         mut pcap_writer: PcapWriter<ExtcapWriter>,
-        _ctrp_pipes: Option<CtrlPipes>,
     ) -> ExtcapResult<()> {
         let maxbytes = extcap
             .get_matches()

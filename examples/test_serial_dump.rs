@@ -60,7 +60,6 @@ impl ExtcapListener for TestSerialDump {
         extcap: &Extcap,
         _ifc: &IFace,
         pcap_writer: PcapWriter<ExtcapWriter>,
-        _ctrl_pipes: Option<CtrlPipes>,
     ) -> ExtcapResult<()> {
         debug!("capture()");
 
