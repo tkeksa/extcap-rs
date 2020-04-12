@@ -9,7 +9,7 @@ use futures::future::{self, lazy, FutureExt};
 use futures::sink::SinkExt;
 use futures::stream::{StreamExt, TryStreamExt};
 use log::{debug, error};
-use tokio_util::codec::{Decoder, Encoder};
+use tokio_util::codec::{Decoder, Encoder, FramedRead, FramedWrite};
 
 use crate::control_pipe::{ControlMsg, CtrlPipes};
 
@@ -79,7 +79,7 @@ async fn thread_in(
     })
     .await?;
     let tpipe = tokio::fs::File::from_std(pipe);
-    let strm = ControlMsgCodec::new().framed(tpipe);
+    let strm = FramedRead::new(tpipe, ControlMsgCodec);
     let task = strm
         .inspect(|msg| debug!("thread_in received {:?}", msg))
         .map_err(|e| {
@@ -105,7 +105,7 @@ async fn thread_out(
     })
     .await?;
     let tpipe = tokio::fs::File::from_std(pipe);
-    let mut strm = ControlMsgCodec::new().framed(tpipe);
+    let mut strm = FramedWrite::new(tpipe, ControlMsgCodec);
     let task = async {
         while let Some(msg) = receiver.next().await {
             debug!("thread_out received {:?}", msg);
@@ -119,13 +119,7 @@ async fn thread_out(
     Ok(())
 }
 
-struct ControlMsgCodec(());
-
-impl ControlMsgCodec {
-    pub fn new() -> Self {
-        Self(())
-    }
-}
+struct ControlMsgCodec;
 
 impl Decoder for ControlMsgCodec {
     type Item = ControlMsg;
@@ -160,11 +154,10 @@ impl Decoder for ControlMsgCodec {
     }
 }
 
-impl Encoder for ControlMsgCodec {
-    type Item = ControlMsg;
+impl Encoder<ControlMsg> for ControlMsgCodec {
     type Error = io::Error;
 
-    fn encode(&mut self, msg: Self::Item, buf: &mut BytesMut) -> Result<(), Self::Error> {
+    fn encode(&mut self, msg: ControlMsg, buf: &mut BytesMut) -> Result<(), Self::Error> {
         buf.reserve(6 + msg.get_data().len());
         buf.put_u8(b'T');
         buf.put_uint(2 + msg.get_data().len() as u64, 3);
