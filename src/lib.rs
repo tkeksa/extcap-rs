@@ -206,6 +206,13 @@ impl Default for ExtcapStep {
 /// Extcap specific result
 pub type ExtcapResult<T> = Result<T, ExtcapError>;
 
+enum TillCaptureOutcome<T> {
+    Finish(T),
+    Capture { ifidx: usize },
+}
+
+type TillCaptureResult<T> = Result<TillCaptureOutcome<T>, ExtcapError>;
+
 /// Exctcap representation
 #[derive(Default)]
 pub struct Extcap<'a> {
@@ -491,6 +498,15 @@ impl<'a> Extcap<'a> {
 
     /// Starts main capture loop
     pub fn run<T: ExtcapListener>(mut self, mut listener: T) -> ExtcapResult<()> {
+        match self.run_till_capture(&mut listener)? {
+            TillCaptureOutcome::Finish(_) => Ok(()),
+            TillCaptureOutcome::Capture { ifidx } => {
+                self.capture(&mut listener, self.get_if(ifidx))
+            }
+        }
+    }
+
+    fn run_till_capture<T: ExtcapListener>(&mut self, listener: &mut T) -> TillCaptureResult<()> {
         // Save matches for listener
         self.matches = Some(self.take_app().get_matches_safe()?);
 
@@ -542,14 +558,14 @@ impl<'a> Extcap<'a> {
         );
 
         // Call listener interfaces update if it depends on passed options
-        listener.update_interfaces(&mut self);
+        listener.update_interfaces(self);
 
         if let ExtcapStep::QueryIfaces = self.get_step() {
             debug!("list of interfaces required");
             self.print_version();
             self.print_iface_list();
             self.print_control_list();
-            return Ok(());
+            return Ok(TillCaptureOutcome::Finish(()));
         }
 
         let ifidx = self
@@ -568,20 +584,20 @@ impl<'a> Extcap<'a> {
             ExtcapStep::QueryDlts => {
                 debug!("interface DLTs required");
                 self.get_if(ifidx).print_dlt_list();
-                Ok(())
+                Ok(TillCaptureOutcome::Finish(()))
             }
             ExtcapStep::ConfigIface { .. } => {
                 if let Some(arg) = self.get_matches().value_of(OPT_EXTCAP_RELOAD_OPTION) {
                     let arg = arg.to_owned(); // ends self immutable borrow
                     debug!("interface config reload required for '{}' argument", arg);
-                    self.reload_option(&mut listener, ifidx, &arg);
+                    self.reload_option(listener, ifidx, &arg);
                 } else {
                     debug!("interface config required");
                     self.get_if(ifidx).print_arg_list();
                 }
-                Ok(())
+                Ok(TillCaptureOutcome::Finish(()))
             }
-            ExtcapStep::Capture { .. } => self.capture(&mut listener, self.get_if(ifidx)),
+            ExtcapStep::Capture { .. } => Ok(TillCaptureOutcome::Capture { ifidx }),
             _ => Err(ExtcapError::unknown_step()),
         }
     }
