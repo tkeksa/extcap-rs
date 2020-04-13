@@ -1,17 +1,17 @@
 use std::fs::OpenOptions;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
-use std::thread;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use extcap::*;
+use futures::channel::mpsc;
+use futures::channel::mpsc::{Receiver, Sender};
 use futures::prelude::*;
 use log::{debug, warn, LevelFilter};
-use pcap_file::{pcap::PcapHeader, DataLink, PcapWriter};
+use pcap_file::pcap::Packet;
+use pcap_file::{pcap::PcapHeader, DataLink};
 use serialport::available_ports;
 use simplelog::{Config, SimpleLogger, WriteLogger};
 use tokio_serial::{Serial, SerialPortSettings};
-use tokio_util::codec::{Decoder, LinesCodec};
+use tokio_util::codec::{FramedRead, LinesCodec};
 
 const GRP_SERIAL: &str = "Serial";
 const OPT_PORT: &str = "port";
@@ -19,10 +19,6 @@ const OPT_BAUD: &str = "baud";
 const BAUD_RATES: &[u32] = &[9_600, 14_400, 115_200];
 
 struct TestSerialDump {}
-
-struct CaptureCtx {
-    pcap_writer: PcapWriter<ExtcapWriter>,
-}
 
 impl ExtcapListener for TestSerialDump {
     fn init_log(&mut self, _extcap: &Extcap, debug: bool, debug_file: Option<&str>) {
@@ -55,13 +51,12 @@ impl ExtcapListener for TestSerialDump {
         }
     }
 
-    fn capture(
+    fn capture_async(
         &mut self,
         extcap: &Extcap,
         _ifc: &IFace,
-        pcap_writer: PcapWriter<ExtcapWriter>,
-    ) -> ExtcapResult<()> {
-        debug!("capture()");
+    ) -> ExtcapResult<Receiver<Packet<'static>>> {
+        debug!("capture_async()");
 
         // Log list of available ports (already used earlier but now it can be written into log file)
         match available_ports() {
@@ -82,59 +77,43 @@ impl ExtcapListener for TestSerialDump {
         }
         let port = Serial::from_path(port, &settings).unwrap();
 
-        let ctx = CaptureCtx { pcap_writer };
-        let ctx = Arc::new(Mutex::new(ctx));
-        let running = Arc::new(AtomicBool::new(true));
+        let (snd, rcv) = mpsc::channel(128);
 
-        let r = running.clone();
-        ctrlc::set_handler(move || {
-            r.store(false, Ordering::SeqCst);
-        })
-        .expect("Error setting Ctrl-C handler");
+        tokio::spawn(task(port, snd));
 
-        let reader = LinesCodec::new().framed(port);
-
-        let r = running.clone();
-        let task = reader.for_each(move |res| {
-            match res {
-                Ok(msg) => {
-                    debug!("line received: '{:?}'", msg);
-                    write_pkt(&ctx, &msg);
-                }
-                Err(err) => {
-                    debug!("error during receiving: {:?}", err);
-                    r.store(false, Ordering::SeqCst);
-                }
-            }
-            future::ready(())
-        });
-        tokio::spawn(task);
-
-        loop {
-            if !running.load(Ordering::SeqCst) {
-                debug!("Error during receiving or Ctrl+C or SIGINT signal received");
-                break;
-            }
-            thread::sleep(Duration::from_millis(50));
-        }
-
-        debug!("capture() finished");
-        Ok(())
+        debug!("async_capture() started");
+        Ok(rcv)
     }
 }
 
-fn write_pkt(ctx: &Arc<Mutex<CaptureCtx>>, msg: &str) {
+async fn task(port: Serial, mut sender: Sender<Packet<'static>>) {
+    let mut reader = FramedRead::new(port, LinesCodec::new());
+    while let Some(res) = reader.next().await {
+        match res {
+            Ok(msg) => {
+                debug!("line received: '{:?}'", msg);
+                write_pkt(&mut sender, &msg).await;
+            }
+            Err(err) => {
+                debug!("error during receiving: {:?}", err);
+                break;
+            }
+        }
+    }
+}
+
+async fn write_pkt(snd: &mut Sender<Packet<'static>>, msg: &str) {
     debug!("write_msg() {}", msg);
-    let pcap_writer = &mut ctx.lock().unwrap().pcap_writer;
     let ts = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("SystemTime before UNIX EPOCH");
-    let _ = pcap_writer.write(
+    let pkt = Packet::new_owned(
         ts.as_secs() as u32,
         ts.subsec_micros(),
-        msg.as_bytes(),
+        msg.as_bytes().to_vec(),
         msg.as_bytes().len() as u32,
     );
+    let _ = snd.send(pkt).await;
 }
 
 #[tokio::main]
@@ -173,7 +152,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     ex.add_interface(tser1);
 
     let user = TestSerialDump {};
-    ex.run(user)?;
+    ex.run_async(user).await?;
 
     debug!("DONE");
 

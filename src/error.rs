@@ -3,14 +3,17 @@ use std::fmt;
 use std::io;
 
 use clap;
+use pcap_file;
 
 #[derive(Debug)]
 enum ExtcapErrorKind {
     Io,
     Clap,
+    Pcap,
     MissingInterface,
     InvalidInterface,
     UnknownStepRequested,
+    UserError,
 }
 
 /// Extcap specific error
@@ -27,16 +30,26 @@ impl ExtcapError {
             message: "Missing interface".to_string(),
         }
     }
+
     pub(crate) fn invalid_interface(interface: &str) -> Self {
         ExtcapError {
             kind: ExtcapErrorKind::InvalidInterface,
             message: format!("Invalid interface: {}", interface),
         }
     }
+
     pub(crate) fn unknown_step() -> Self {
         ExtcapError {
             kind: ExtcapErrorKind::UnknownStepRequested,
             message: "Unknown step requested".to_string(),
+        }
+    }
+
+    /// Create user error
+    pub fn user_error<T: ToString>(msg: T) -> Self {
+        ExtcapError {
+            kind: ExtcapErrorKind::UserError,
+            message: msg.to_string(),
         }
     }
 }
@@ -62,6 +75,15 @@ impl From<clap::Error> for ExtcapError {
     fn from(error: clap::Error) -> Self {
         ExtcapError {
             kind: ExtcapErrorKind::Clap,
+            message: error.to_string(),
+        }
+    }
+}
+
+impl From<pcap_file::PcapError> for ExtcapError {
+    fn from(error: pcap_file::PcapError) -> Self {
+        ExtcapError {
+            kind: ExtcapErrorKind::Pcap,
             message: error.to_string(),
         }
     }

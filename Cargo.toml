@@ -19,7 +19,8 @@ all-features = true
 
 [features]
 default = []
-ctrl_pipe = ["futures", "tokio/fs", "tokio-util/codec"]
+async-api = ["futures"]
+ctrl-pipe = ["futures", "tokio/fs", "tokio-util/codec"]
 
 [dependencies]
 bytes = "0.5.4"
@@ -44,5 +45,9 @@ version = "0.2.17"
 features = ["macros", "rt-threaded"]
 
 [[example]]
+name = "test_serial_dump"
+required-features = ["async-api"]
+
+[[example]]
 name = "test_control_dump"
-required-features = ["ctrl_pipe"]
+required-features = ["ctrl-pipe"]
