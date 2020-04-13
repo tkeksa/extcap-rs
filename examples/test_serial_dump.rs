@@ -2,12 +2,10 @@ use std::fs::OpenOptions;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use extcap::*;
-use futures::channel::mpsc;
-use futures::channel::mpsc::{Receiver, Sender};
+use futures::channel::mpsc::{self, Sender};
 use futures::prelude::*;
 use log::{debug, warn, LevelFilter};
-use pcap_file::pcap::Packet;
-use pcap_file::{pcap::PcapHeader, DataLink};
+use pcap_file::{pcap::Packet, pcap::PcapHeader, DataLink};
 use serialport::available_ports;
 use simplelog::{Config, SimpleLogger, WriteLogger};
 use tokio_serial::{Serial, SerialPortSettings};
@@ -51,11 +49,7 @@ impl ExtcapListener for TestSerialDump {
         }
     }
 
-    fn capture_async(
-        &mut self,
-        extcap: &Extcap,
-        _ifc: &IFace,
-    ) -> ExtcapResult<Receiver<Packet<'static>>> {
+    fn capture_async(&mut self, extcap: &Extcap, _ifc: &IFace) -> ExtcapResult<ExtcapReceiver> {
         debug!("capture_async()");
 
         // Log list of available ports (already used earlier but now it can be written into log file)
@@ -81,7 +75,7 @@ impl ExtcapListener for TestSerialDump {
 
         tokio::spawn(task(port, snd));
 
-        debug!("async_capture() started");
+        debug!("capture_async() started");
         Ok(rcv)
     }
 }

@@ -136,6 +136,13 @@ fn create_pcap_writer(fifo: &str, pcap_header: PcapHeader) -> io::Result<PcapWri
         .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("{:?}", e)))
 }
 
+/// Extcap specific result
+pub type ExtcapResult<T> = Result<T, ExtcapError>;
+
+/// Packet receiver for async-api
+#[cfg(feature = "async-api")]
+pub type ExtcapReceiver = Receiver<Packet<'static>>;
+
 /// A trait for Extcap callbacks
 pub trait ExtcapListener {
     /// Log initialization
@@ -169,24 +176,19 @@ pub trait ExtcapListener {
 
     /// Main async capture loop
     #[cfg(feature = "async-api")]
-    fn capture_async(
-        &mut self,
-        _extcap: &Extcap,
-        _ifc: &IFace,
-    ) -> ExtcapResult<Receiver<Packet<'static>>> {
+    fn capture_async(&mut self, _extcap: &Extcap, _ifc: &IFace) -> ExtcapResult<ExtcapReceiver> {
         unimplemented!()
     }
 
-    /// Main capture loop with optional `CtrlPipes`
+    /// Main async capture loop with optional `CtrlPipes`
     #[cfg(feature = "ctrl-pipe")]
-    fn capture_with_ctrl(
+    fn capture_async_with_ctrl(
         &mut self,
         extcap: &Extcap,
         ifc: &IFace,
-        pcap_writer: PcapWriter<ExtcapWriter>,
         _ctrl_pipes: Option<CtrlPipes>,
-    ) -> ExtcapResult<()> {
-        self.capture(extcap, ifc, pcap_writer)
+    ) -> ExtcapResult<ExtcapReceiver> {
+        self.capture_async(extcap, ifc)
     }
 }
 
@@ -216,9 +218,6 @@ impl Default for ExtcapStep {
         ExtcapStep::None
     }
 }
-
-/// Extcap specific result
-pub type ExtcapResult<T> = Result<T, ExtcapError>;
 
 enum TillCaptureOutcome<T> {
     Finish(T),
@@ -668,47 +667,11 @@ impl<'a> Extcap<'a> {
             fifo,
             capture_filter.unwrap_or_default()
         );
-        #[cfg(feature = "ctrl-pipe")]
-        let mut control_pipe = {
-            let control_in = self.get_matches().value_of(OPT_EXTCAP_CONTROL_IN);
-            let control_out = self.get_matches().value_of(OPT_EXTCAP_CONTROL_OUT);
-            if let (Some(ctrl_in), Some(ctrl_out)) = (control_in, control_out) {
-                debug!("capture with control in={} out={}", ctrl_in, ctrl_out);
-                match create_control_pipe(ctrl_in, ctrl_out) {
-                    Ok(ctrl_pipe) => Some(ctrl_pipe),
-                    Err(e) => {
-                        warn!(
-                            "create_control_pipe(ctrl_in={}, ctrl_out={}), failed with error {}",
-                            ctrl_in, ctrl_out, e
-                        );
-                        None
-                    }
-                }
-            } else {
-                None
-            }
-        };
+
         let ph = listener.capture_header(self, ifc);
         debug!("capture pcap header: {:?}", ph);
         let pw = create_pcap_writer(fifo, ph)?;
-        #[cfg(feature = "ctrl-pipe")]
-        let res = {
-            let ctrl_pipe = control_pipe.as_mut().map(control_pipe::ControlPipe::start);
-            debug!(
-                "capture starting {} ctrl pipes",
-                if ctrl_pipe.is_some() {
-                    "with"
-                } else {
-                    "without"
-                }
-            );
-            let res = listener.capture_with_ctrl(self, ifc, pw, ctrl_pipe);
-            if let Some(cp) = control_pipe {
-                cp.stop();
-            }
-            res
-        };
-        #[cfg(not(feature = "ctrl-pipe"))]
+
         let res = {
             debug!("capture starting");
             listener.capture(self, ifc, pw)
@@ -731,20 +694,72 @@ impl<'a> Extcap<'a> {
             fifo,
             capture_filter.unwrap_or_default()
         );
+        #[cfg(feature = "ctrl-pipe")]
+        let mut control_pipe = {
+            let control_in = self.get_matches().value_of(OPT_EXTCAP_CONTROL_IN);
+            let control_out = self.get_matches().value_of(OPT_EXTCAP_CONTROL_OUT);
+            if let (Some(ctrl_in), Some(ctrl_out)) = (control_in, control_out) {
+                debug!("async capture with control in={} out={}", ctrl_in, ctrl_out);
+                match create_control_pipe(ctrl_in, ctrl_out) {
+                    Ok(ctrl_pipe) => Some(ctrl_pipe),
+                    Err(e) => {
+                        warn!(
+                            "create_control_pipe(ctrl_in={}, ctrl_out={}), failed with error {}",
+                            ctrl_in, ctrl_out, e
+                        );
+                        None
+                    }
+                }
+            } else {
+                None
+            }
+        };
+
         let ph = listener.capture_header(self, ifc);
         debug!("async capture pcap header: {:?}", ph);
-        let mut pw = create_pcap_writer(fifo, ph)?;
+        let pw = create_pcap_writer(fifo, ph)?;
+
+        #[cfg(feature = "ctrl-pipe")]
         let res = {
-            debug!("capture starting");
-            let mut receiver = listener.capture_async(self, ifc)?;
-            while let Some(pkt) = receiver.next().await {
-                debug!("async packet received {:?}", pkt);
-                pw.write_packet(&pkt)?;
+            let ctrl_pipe = control_pipe.as_mut().map(control_pipe::ControlPipe::start);
+            debug!(
+                "async capture starting {} ctrl pipes",
+                if ctrl_pipe.is_some() {
+                    "with"
+                } else {
+                    "without"
+                }
+            );
+            let receiver = listener.capture_async_with_ctrl(self, ifc, ctrl_pipe)?;
+            let res = capture_async_loop(receiver, pw).await;
+            if let Some(cp) = control_pipe {
+                cp.stop();
             }
-            Ok(())
+            res
         };
+
+        #[cfg(not(feature = "ctrl-pipe"))]
+        let res = {
+            debug!("async capture starting");
+            let receiver = listener.capture_async(self, ifc)?;
+            capture_async_loop(receiver, pw).await
+        };
+
         debug!("async capture finished: {:?}", res);
 
         res
     }
+}
+
+#[cfg(feature = "async-api")]
+async fn capture_async_loop(
+    mut receiver: ExtcapReceiver,
+    mut pw: PcapWriter<ExtcapWriter>,
+) -> ExtcapResult<()> {
+    debug!("async capture started");
+    while let Some(pkt) = receiver.next().await {
+        debug!("async packet received {:?}", pkt);
+        pw.write_packet(&pkt)?;
+    }
+    Ok(())
 }

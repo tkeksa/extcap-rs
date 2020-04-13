@@ -104,7 +104,7 @@ impl ControlMsg {
 /// Control pipes
 pub type CtrlPipes = (Receiver<ControlMsg>, Sender<ControlMsg>);
 
-pub struct ControlPipe {
+pub(crate) struct ControlPipe {
     runtime: ControlPipeRuntime,
 }
 

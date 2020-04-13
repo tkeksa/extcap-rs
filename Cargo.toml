@@ -20,7 +20,7 @@ all-features = true
 [features]
 default = []
 async-api = ["futures"]
-ctrl-pipe = ["futures", "tokio/fs", "tokio-util/codec"]
+ctrl-pipe = ["async-api", "futures", "tokio/fs", "tokio-util/codec"]
 
 [dependencies]
 bytes = "0.5.4"

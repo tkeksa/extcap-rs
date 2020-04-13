@@ -35,10 +35,6 @@ impl ControlPipeRuntime {
     pub(crate) fn start(&mut self) -> CtrlPipes {
         debug!("start()");
 
-        tokio::spawn(async {
-            debug!("AAA");
-        });
-
         let (snd, rcv_in) = mpsc::channel(PIPE_LEN);
         let (stop_tx, stop_rx) = oneshot::channel::<()>();
         self.stop_in = Some(stop_tx);

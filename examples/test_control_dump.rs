@@ -1,22 +1,19 @@
 use std::fmt::Display;
 use std::fs::OpenOptions;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
-use std::thread;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use extcap::*;
-use futures::channel::mpsc::Sender;
+use futures::channel::mpsc::{self, Receiver, Sender};
 use futures::prelude::*;
 use log::{debug, LevelFilter};
-use pcap_file::{pcap::PcapHeader, DataLink, PcapWriter};
+use pcap_file::{pcap::Packet, pcap::PcapHeader, DataLink};
 use simplelog::{Config, SimpleLogger, WriteLogger};
 use tokio;
 
 struct TestControlDump {}
 
 struct CaptureCtx {
-    pcap_writer: PcapWriter<ExtcapWriter>,
+    extcap_sender: Sender<Packet<'static>>,
     pipe_out: Option<Sender<ControlMsg>>,
 }
 
@@ -51,82 +48,76 @@ impl ExtcapListener for TestControlDump {
         }
     }
 
-    fn capture_with_ctrl(
+    fn capture_async_with_ctrl(
         &mut self,
         _extcap: &Extcap,
         _ifc: &IFace,
-        pcap_writer: PcapWriter<ExtcapWriter>,
         ctrl_pipes: Option<CtrlPipes>,
-    ) -> ExtcapResult<()> {
-        debug!("capture()");
+    ) -> ExtcapResult<ExtcapReceiver> {
+        debug!("capture_async()");
 
         let (pipe_in, pipe_out) = if let Some((pi, po)) = ctrl_pipes {
             (Some(pi), Some(po))
         } else {
             (None, None)
         };
+
+        let (snd, rcv) = mpsc::channel(128);
+
         let ctx = CaptureCtx {
-            pcap_writer,
+            extcap_sender: snd,
             pipe_out,
         };
-        let ctx = Arc::new(Mutex::new(ctx));
-        let running = Arc::new(AtomicBool::new(true));
 
-        write_log(&ctx, "Begin");
-        write_msg(&ctx, "Begin");
+        tokio::spawn(task(ctx, pipe_in));
 
-        if let Some(pi) = pipe_in {
-            let cx = ctx.clone();
-            let r = running.clone();
-            let task = pi.for_each(move |msg| {
-                debug!("capture() ctrl msg received {:?}", msg);
-                write_msg(&cx, &format!("{:?}", msg));
-                write_log(&cx, &format!("{:?}", msg));
-                if let ControlCmd::Set = msg.get_command() {
-                    if msg.get_ctrl_num() == 3 {
-                        debug!("Stop pressed");
-                        r.store(false, Ordering::SeqCst);
-                    }
-                }
-                future::ready(())
-            });
-            tokio::spawn(task);
-        }
-
-        loop {
-            if !running.load(Ordering::SeqCst) {
-                debug!("Stop command received");
-                break;
-            }
-            thread::sleep(Duration::from_millis(50));
-        }
-
-        write_log(&ctx, "End");
-        write_msg(&ctx, "End");
-
-        debug!("capture() finished");
-        Ok(())
+        debug!("capture_async() started");
+        Ok(rcv)
     }
 }
 
-fn write_msg(ctx: &Arc<Mutex<CaptureCtx>>, msg: &str) {
+async fn task(mut ctx: CaptureCtx, pipe_in: Option<Receiver<ControlMsg>>) {
+    write_log(&mut ctx, "Begin").await;
+    write_msg(&mut ctx.extcap_sender, "Begin").await;
+
+    if let Some(mut pi) = pipe_in {
+        while let Some(msg) = pi.next().await {
+            debug!("capture() ctrl msg received {:?}", msg);
+            write_msg(&mut ctx.extcap_sender, &format!("{:?}", msg)).await;
+            write_log(&mut ctx, &format!("{:?}", msg)).await;
+            if let ControlCmd::Set = msg.get_command() {
+                if msg.get_ctrl_num() == 3 {
+                    debug!("Stop pressed");
+                    break;
+                }
+            }
+        }
+    }
+
+    write_log(&mut ctx, "End").await;
+    write_msg(&mut ctx.extcap_sender, "End").await;
+}
+
+async fn write_msg(snd: &mut Sender<Packet<'static>>, msg: &str) {
     debug!("write_msg() {}", msg);
-    let pcap_writer = &mut ctx.lock().unwrap().pcap_writer;
     let ts = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("SystemTime before UNIX EPOCH");
-    let _ = pcap_writer.write(
+    let pkt = Packet::new_owned(
         ts.as_secs() as u32,
         ts.subsec_micros(),
-        msg.as_bytes(),
+        msg.as_bytes().to_vec(),
         msg.as_bytes().len() as u32,
     );
+    let _ = snd.send(pkt).await;
 }
 
-fn write_log<T: Display>(ctx: &Arc<Mutex<CaptureCtx>>, msg: T) {
-    if let Some(po) = ctx.lock().unwrap().pipe_out.as_mut() {
+async fn write_log<T: Display>(ctx: &mut CaptureCtx, msg: T) {
+    if let Some(po) = &mut ctx.pipe_out {
         let line = format!("{}\n", msg);
-        let _ = po.try_send(ControlMsg::new(4, ControlCmd::Add, line.as_bytes()));
+        let _ = po
+            .send(ControlMsg::new(4, ControlCmd::Add, line.as_bytes()))
+            .await;
     }
 }
 
@@ -178,7 +169,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     ex.add_control(Control::new_button(ButtonRole::Restore).display("Restore 6"));
 
     let user = TestControlDump {};
-    ex.run(user)?;
+    ex.run_async(user).await?;
 
     debug!("DONE");
 
