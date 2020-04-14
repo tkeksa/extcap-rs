@@ -1,11 +1,12 @@
 use std::fs::File;
+use std::future::Future;
 use std::io::{self, Cursor};
 
 use bytes::buf::BufMut;
 use bytes::{Buf, BytesMut};
 use futures::channel::mpsc::{self, Receiver, Sender};
 use futures::channel::oneshot;
-use futures::future::{self, lazy, FutureExt};
+use futures::future::{self, lazy, BoxFuture, FutureExt};
 use futures::sink::SinkExt;
 use futures::stream::{StreamExt, TryStreamExt};
 use log::{debug, error};
@@ -15,49 +16,74 @@ use crate::control_pipe::{ControlMsg, CtrlPipes};
 
 const PIPE_LEN: usize = 128;
 
-#[derive(Default)]
-pub struct ControlPipeRuntime {
-    pipe_in: Option<File>,
-    pipe_out: Option<File>,
-    stop_in: Option<oneshot::Sender<()>>,
-    stop_out: Option<oneshot::Sender<()>>,
+#[derive(Debug)]
+enum State {
+    New {
+        pipe_in: File,
+        pipe_out: File,
+    },
+    Started {
+        stop_in: oneshot::Sender<()>,
+        stop_out: oneshot::Sender<()>,
+    },
+}
+
+pub(crate) struct ControlPipeRuntime {
+    state: Option<State>,
+    tsk: Option<BoxFuture<'static, ()>>,
 }
 
 impl ControlPipeRuntime {
     pub(crate) fn new(pipe_in: File, pipe_out: File) -> Self {
         Self {
-            pipe_in: Some(pipe_in),
-            pipe_out: Some(pipe_out),
-            ..Default::default()
+            state: Some(State::New { pipe_in, pipe_out }),
+            tsk: None,
         }
     }
 
     pub(crate) fn start(&mut self) -> CtrlPipes {
-        debug!("start()");
+        debug!("start() state={:?}", self.state);
+
+        let (pipe_in, pipe_out) = if let Some(State::New { pipe_in, pipe_out }) = self.state.take()
+        {
+            (pipe_in, pipe_out)
+        } else {
+            error!("start() called in wrong state");
+            panic!("start() called in wrong state");
+        };
 
         let (snd, rcv_in) = mpsc::channel(PIPE_LEN);
-        let (stop_tx, stop_rx) = oneshot::channel::<()>();
-        self.stop_in = Some(stop_tx);
-        let pipe = self.pipe_in.take().unwrap();
-        tokio::spawn(thread_in(stop_rx, pipe, snd));
+        let (stop_in, stop_in_rx) = oneshot::channel::<()>();
 
         let (snd_out, rcv) = mpsc::channel(PIPE_LEN);
-        let (stop_tx, stop_rx) = oneshot::channel::<()>();
-        self.stop_out = Some(stop_tx);
-        let pipe = self.pipe_out.take().unwrap();
-        tokio::spawn(thread_out(stop_rx, pipe, rcv));
+        let (stop_out, stop_out_rx) = oneshot::channel::<()>();
 
-        debug!("start() done");
+        self.state = Some(State::Started { stop_in, stop_out });
+
+        let tsk = futures::future::join(
+            thread_in(stop_in_rx, pipe_in, snd),
+            thread_out(stop_out_rx, pipe_out, rcv),
+        )
+        .map(|_| ());
+
+        self.tsk = Some(tsk.boxed::<'static>());
+
+        debug!("start() done state={:?}", self.state);
         (rcv_in, snd_out)
     }
 
+    pub(crate) fn run_task(&mut self) -> impl Future<Output = ()> {
+        self.tsk.take().unwrap()
+    }
+
     pub(crate) fn stop(mut self) {
-        debug!("stop()");
-        if let Some(tx) = self.stop_in.take() {
-            tx.send(()).unwrap();
-        }
-        if let Some(tx) = self.stop_out.take() {
-            tx.send(()).unwrap();
+        debug!("stop() state={:?}", self.state);
+        if let Some(State::Started { stop_in, stop_out }) = self.state.take() {
+            stop_in.send(()).unwrap();
+            stop_out.send(()).unwrap();
+        } else {
+            error!("stop() called in wrong state");
+            return;
         }
         debug!("stop() done");
     }

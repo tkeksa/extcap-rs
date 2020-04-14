@@ -45,6 +45,8 @@ use std::fs::File;
 use std::io::{self, Stdout, Write};
 
 use clap::{App, AppSettings, Arg, ArgGroup, ArgMatches};
+#[cfg(feature = "ctrl-pipe")]
+use futures::future;
 #[cfg(feature = "async-api")]
 use futures::{channel::mpsc::Receiver, stream::StreamExt};
 use log::{debug, warn};
@@ -731,11 +733,21 @@ impl<'a> Extcap<'a> {
                 }
             );
             let receiver = listener.capture_async_with_ctrl(self, ifc, ctrl_pipe)?;
-            let res = capture_async_loop(receiver, pw).await;
-            if let Some(cp) = control_pipe {
-                cp.stop();
+            let tsk_ctrl_opt = control_pipe
+                .as_mut()
+                .map(control_pipe::ControlPipe::run_task);
+            let tsk_capture = async {
+                let res = capture_async_loop(receiver, pw).await;
+                if let Some(cp) = control_pipe {
+                    cp.stop();
+                }
+                res
+            };
+            if let Some(tsk_ctrl) = tsk_ctrl_opt {
+                future::join(tsk_ctrl, tsk_capture).await.1
+            } else {
+                tsk_capture.await
             }
-            res
         };
 
         #[cfg(not(feature = "ctrl-pipe"))]

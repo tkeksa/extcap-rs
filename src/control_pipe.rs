@@ -1,4 +1,5 @@
 use std::fs::File;
+use std::future::Future;
 
 use futures::channel::mpsc::{Receiver, Sender};
 
@@ -119,7 +120,11 @@ impl ControlPipe {
         self.runtime.start()
     }
 
+    pub(crate) fn run_task(&mut self) -> impl Future<Output = ()> {
+        self.runtime.run_task()
+    }
+
     pub(crate) fn stop(self) {
-        self.runtime.stop();
+        self.runtime.stop()
     }
 }
