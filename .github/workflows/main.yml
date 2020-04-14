@@ -9,7 +9,7 @@ jobs:
 
     strategy:
       matrix:
-         ftr: [--no-default-features, --all-features]
+         ftr: [--no-default-features, --features=async-api, --features=ctrl-pipe, --all-features]
      
     steps:
 
