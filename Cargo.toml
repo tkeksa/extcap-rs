@@ -24,24 +24,24 @@ ctrl-pipe = ["async-api", "tokio/fs", "tokio-util/codec"]
 
 [dependencies]
 bytes = "0.5.4"
-clap = "2.33.0"
+clap = "2.33.1"
 log = "0.4.8"
 pcap-file = "1.1.1"
-futures = { version = "0.3.4", optional = true }
-tokio = { version = "0.2.18", optional = true }
+futures = { version = "0.3.5", optional = true }
+tokio = { version = "0.2.21", optional = true }
 tokio-util = { version = "0.3.1", optional = true }
 
 [dev-dependencies]
 ctrlc = "3.1.4"
 rand = "0.7.3"
 serialport = "3.3.0"
-simplelog = "0.7.5"
-futures = "0.3.4"
+simplelog = "0.8.0"
+futures = "0.3.5"
 tokio-serial = "4.3.3"
 tokio-util = { version = "0.3.1", features = ["codec"] }
 
 [dev-dependencies.tokio]
-version = "0.2.18"
+version = "0.2.21"
 features = ["macros", "rt-threaded"]
 
 [[example]]
