@@ -3,7 +3,6 @@
 [![Crate][crate-image]][crate-link]
 [![Docs][docs-image]][docs-link]
 [![Build Status][build-image]][build-link]
-[![dependency status][deps-image]][deps-link]
 ![MIT licensed][license-image]
 
 This crate helps writing [extcap][wireshark-extcap] plugins for [Wireshark][wireshark].
@@ -25,8 +24,6 @@ Dual licensed under your choice of either of:
 [docs-link]: https://docs.rs/extcap/
 [build-image]: https://github.com/tkeksa/extcap-rs/workflows/ci/badge.svg
 [build-link]: https://github.com/tkeksa/extcap-rs/actions
-[deps-image]: https://deps.rs/repo/github/tkeksa/extcap-rs/status.svg
-[deps-link]: https://deps.rs/repo/github/tkeksa/extcap-rs
 [license-image]: https://img.shields.io/badge/license-Apache2.0/MIT-blue.svg
 [wireshark]: https://www.wireshark.org/
 [wireshark-extcap]: https://www.wireshark.org/docs/man-pages/extcap.html
