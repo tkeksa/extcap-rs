@@ -8,7 +8,6 @@ use futures::prelude::*;
 use log::{debug, LevelFilter};
 use pcap_file::{pcap::Packet, pcap::PcapHeader, DataLink};
 use simplelog::{Config, SimpleLogger, WriteLogger};
-use tokio;
 
 struct TestControlDump {}
 

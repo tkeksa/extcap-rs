@@ -2,9 +2,6 @@ use std::error::Error;
 use std::fmt;
 use std::io;
 
-use clap;
-use pcap_file;
-
 #[derive(Debug)]
 enum ExtcapErrorKind {
     Io,
