@@ -412,11 +412,7 @@ impl<'a> Extcap<'a> {
         if let Some(hlp) = ifa.get_display() {
             arg = arg.help(hlp);
         }
-        arg = arg.takes_value(if let IfArgType::Boolflag = ifa.get_type() {
-            false
-        } else {
-            true
-        });
+        arg = arg.takes_value(!matches!(ifa.get_type(), IfArgType::Boolflag));
         self.app_arg(arg);
 
         self.app_args.insert(ifa.get_name().to_owned());

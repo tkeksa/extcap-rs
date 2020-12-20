@@ -10,6 +10,8 @@ This crate helps writing [extcap][wireshark-extcap] plugins for [Wireshark][wire
 
 See [Extcap: Developer Guide][wireshark-extcap-dev] also.
 
+_Note: `tokio 0.2` is used because of `tokio-serial`_
+
 ## License
 
 Dual licensed under your choice of either of:

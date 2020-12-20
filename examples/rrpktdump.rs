@@ -113,7 +113,7 @@ impl ExtcapListener for RRPktDump {
                 break;
             }
 
-            let len = rng.gen_range(1, maxbytes + 1);
+            let len = rng.gen_range(1..=maxbytes);
             let mut data = vec![0u8; len];
             rng.fill(data.as_mut_slice());
             let ts = SystemTime::now()

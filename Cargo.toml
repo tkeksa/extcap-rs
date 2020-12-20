@@ -23,26 +23,23 @@ async-api = ["futures"]
 ctrl-pipe = ["async-api", "tokio/fs", "tokio-util/codec"]
 
 [dependencies]
-bytes = "0.5.6"
-clap = "2.33.1"
+bytes = "0.5.0"
+clap = "2.33.3"
 log = "0.4.11"
 pcap-file = "1.1.1"
-futures = { version = "0.3.5", optional = true }
-tokio = { version = "0.2.22", optional = true }
+futures = { version = "0.3.8", optional = true }
+tokio = { version = "0.2.24", optional = true }
 tokio-util = { version = "0.3.1", optional = true }
 
 [dev-dependencies]
-ctrlc = "3.1.6"
-rand = "0.7.3"
+ctrlc = "3.1.7"
+rand = "0.8.0"
 serialport = "3.3.0"
-simplelog = "0.8.0"
-futures = "0.3.5"
+simplelog = "0.9.0"
+futures = "0.3.8"
 tokio-serial = "4.3.3"
+tokio = { version = "0.2.24", features = ["macros", "rt-threaded"] }
 tokio-util = { version = "0.3.1", features = ["codec"] }
-
-[dev-dependencies.tokio]
-version = "0.2.21"
-features = ["macros", "rt-threaded"]
 
 [[example]]
 name = "test_serial_dump"
