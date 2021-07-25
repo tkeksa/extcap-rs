@@ -16,8 +16,8 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v2
 
-#    - name: Install dependencies
-#      run: sudo apt install libudev-dev
+    - name: Install dependencies
+      run: sudo apt install libudev-dev
 
     - name: Install components
       run: rustup component add --toolchain stable rustfmt clippy
