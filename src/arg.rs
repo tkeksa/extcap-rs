@@ -1,6 +1,7 @@
 use crate::print_opt_value;
 
 /// Extcap Argument types
+#[derive(Copy, Clone)]
 pub enum IfArgType {
     /// None or unknown
     None,
@@ -60,7 +61,7 @@ impl IfArgType {
 }
 
 /// Argument representation
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct IfArg<'a> {
     number: usize,
     name: &'a str,
@@ -95,7 +96,7 @@ impl<'a> IfArg<'a> {
     }
 
     pub(crate) fn get_name(&self) -> &'a str {
-        &self.name
+        self.name
     }
 
     pub(crate) fn get_display(&self) -> Option<&'a str> {
@@ -266,7 +267,7 @@ impl<'a> IfArg<'a> {
 }
 
 /// Argument value representation
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct IfArgVal {
     arg: usize,
     value: String,

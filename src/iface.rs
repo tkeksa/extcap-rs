@@ -25,7 +25,8 @@ impl<'a> IFace<'a> {
         }
     }
 
-    pub(crate) fn get_interface(&self) -> &str {
+    /// Gets interface name
+    pub fn get_interface(&self) -> &str {
         &self.interface
     }
 

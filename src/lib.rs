@@ -408,7 +408,7 @@ impl<'a> Extcap<'a> {
             return;
         }
 
-        let mut arg = Arg::with_name(&ifa.get_name()).long(&ifa.get_name());
+        let mut arg = Arg::with_name(ifa.get_name()).long(ifa.get_name());
         if let Some(hlp) = ifa.get_display() {
             arg = arg.help(hlp);
         }
@@ -557,7 +557,7 @@ impl<'a> Extcap<'a> {
                 Some(s)
             }
         });
-        listener.init_log(&self, debug, debug_file);
+        listener.init_log(self, debug, debug_file);
         debug!("=======================");
         debug!(
             "Log initialized debug={} debug_file={}",
