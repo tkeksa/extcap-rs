@@ -172,7 +172,7 @@ impl Decoder for ControlMsgCodec {
         pdu.advance(4);
         let cnum = pdu.get_u8();
         let cmd = pdu.get_u8();
-        Ok(Some(ControlMsg::new(cnum, cmd.into(), pdu.bytes())))
+        Ok(Some(ControlMsg::new(cnum, cmd.into(), pdu.chunk())))
     }
 }
 

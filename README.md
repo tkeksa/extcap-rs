@@ -10,8 +10,6 @@ This crate helps writing [extcap][wireshark-extcap] plugins for [Wireshark][wire
 
 See [Extcap: Developer Guide][wireshark-extcap-dev] also.
 
-_Note: `tokio 0.2` is used because of `tokio-serial`_
-
 ## License
 
 Dual licensed under your choice of either of:
@@ -25,7 +23,7 @@ Dual licensed under your choice of either of:
 [crate-link]: https://crates.io/crates/extcap
 [docs-image]: https://docs.rs/extcap/badge.svg
 [docs-link]: https://docs.rs/extcap/
-[build-image]: https://github.com/tkeksa/extcap-rs/workflows/ci/badge.svg
+[build-image]: https://github.com/tkeksa/extcap-rs/workflows/ci/badge.svg?tag=0.3.0
 [build-link]: https://github.com/tkeksa/extcap-rs/actions
 [deps-image]: https://deps.rs/repo/github/tkeksa/extcap-rs/status.svg
 [deps-link]: https://deps.rs/repo/github/tkeksa/extcap-rs

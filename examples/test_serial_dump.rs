@@ -8,7 +8,7 @@ use log::{debug, warn, LevelFilter};
 use pcap_file::{pcap::Packet, pcap::PcapHeader, DataLink};
 use serialport::available_ports;
 use simplelog::{Config, SimpleLogger, WriteLogger};
-use tokio_serial::{Serial, SerialPortSettings};
+use tokio_serial::{SerialPortBuilderExt, SerialStream};
 use tokio_util::codec::{FramedRead, LinesCodec};
 
 const GRP_SERIAL: &str = "Serial";
@@ -60,16 +60,18 @@ impl ExtcapListener for TestSerialDump {
 
         let port = extcap.get_matches().value_of(OPT_PORT).unwrap();
         debug!("port={}", port);
-        let mut settings = SerialPortSettings::default();
+        let mut builder = tokio_serial::new(port, 9_600);
         if let Some(baud) = extcap
             .get_matches()
             .value_of(OPT_BAUD)
             .and_then(|s| s.parse::<u32>().ok())
         {
             debug!("baud={}", baud);
-            settings.baud_rate = baud;
+            builder = builder.baud_rate(baud);
         }
-        let port = Serial::from_path(port, &settings).unwrap();
+        let port = builder
+            .open_native_async()
+            .map_err(|serr| ExtcapError::user_error(serr.to_string()))?;
 
         let (snd, rcv) = mpsc::channel(128);
 
@@ -80,7 +82,7 @@ impl ExtcapListener for TestSerialDump {
     }
 }
 
-async fn task(port: Serial, mut sender: Sender<Packet<'static>>) {
+async fn task(port: SerialStream, mut sender: Sender<Packet<'static>>) {
     let mut reader = FramedRead::new(port, LinesCodec::new());
     while let Some(res) = reader.next().await {
         match res {
