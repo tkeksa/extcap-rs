@@ -104,12 +104,8 @@ async fn thread_in(
     let strm = FramedRead::new(tpipe, ControlMsgCodec);
     let task = strm
         .inspect(|msg| debug!("thread_in received {:?}", msg))
-        .map_err(|e| {
-            error!("thread_in stream_err {:?}", e);
-        })
-        .forward(sender.sink_map_err(|e| {
-            error!("thread_in sink_err {:?}", e);
-        }));
+        .map_err(|e| error!("thread_in stream_err {:?}", e))
+        .forward(sender.sink_map_err(|e| error!("thread_in sink_err {:?}", e)));
     future::select(stop, task).await;
     debug!("thread_in stopped");
     Ok(())

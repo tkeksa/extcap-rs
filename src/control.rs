@@ -72,7 +72,7 @@ pub struct Control {
 impl Control {
     fn new(ctype: ControlType) -> Self {
         Self {
-            number: usize::max_value(),
+            number: usize::MAX,
             ctype,
             ..Default::default()
         }
@@ -180,7 +180,7 @@ impl ControlVal {
     /// Creates a new instance of `ControlVal` using a string value
     pub fn new<T: ToString>(value: T) -> Self {
         ControlVal {
-            control: usize::max_value(),
+            control: usize::MAX,
             value: value.to_string(),
             ..Default::default()
         }

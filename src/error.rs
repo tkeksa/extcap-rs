@@ -55,7 +55,7 @@ impl Error for ExtcapError {}
 
 impl fmt::Display for ExtcapError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.message)
+        write!(f, "{:?}:{}", self.kind, self.message)
     }
 }
 
