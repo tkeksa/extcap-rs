@@ -232,9 +232,9 @@ type TillCaptureResult<T> = Result<TillCaptureOutcome<T>, ExtcapError>;
 #[derive(Default)]
 pub struct Extcap<'a> {
     step: ExtcapStep,
-    app: Option<App<'a, 'a>>,
+    app: Option<App<'a>>,
     app_args: HashSet<String>, // optional user arguments added from interfaces
-    matches: Option<ArgMatches<'a>>,
+    matches: Option<ArgMatches>,
     version: Option<String>,
     helppage: Option<String>,
     ws_version: Option<String>,
@@ -249,23 +249,22 @@ impl<'a> Extcap<'a> {
     /// Creates a new instance of an `Extcap` requiring a name.
     pub fn new(name: &'a str) -> Self {
         let app = App::new(name)
-            .setting(AppSettings::UnifiedHelpMessage)
             .setting(AppSettings::AllowNegativeNumbers)
             //.template(HELP_TEMPLATE)
             .arg(
-                Arg::with_name(OPT_EXTCAP_VERSION)
+                Arg::new(OPT_EXTCAP_VERSION)
                     .long(OPT_EXTCAP_VERSION)
                     .help("Wireshark version")
                     .takes_value(true)
                     .value_name("ver"),
             )
             .arg(
-                Arg::with_name(OPT_EXTCAP_INTERFACES)
+                Arg::new(OPT_EXTCAP_INTERFACES)
                     .long(OPT_EXTCAP_INTERFACES)
                     .help("List the extcap Interfaces"),
             )
             .arg(
-                Arg::with_name(OPT_EXTCAP_INTERFACE)
+                Arg::new(OPT_EXTCAP_INTERFACE)
                     .long(OPT_EXTCAP_INTERFACE)
                     .help("Specify the extcap interface")
                     .takes_value(true)
@@ -273,29 +272,29 @@ impl<'a> Extcap<'a> {
                     .conflicts_with(OPT_EXTCAP_INTERFACES),
             )
             .arg(
-                Arg::with_name(OPT_EXTCAP_DTLS)
+                Arg::new(OPT_EXTCAP_DTLS)
                     .long(OPT_EXTCAP_DTLS)
                     .help("List the DLTs"),
             )
             .arg(
-                Arg::with_name(OPT_EXTCAP_CONFIG)
+                Arg::new(OPT_EXTCAP_CONFIG)
                     .long(OPT_EXTCAP_CONFIG)
                     .help("List the additional configuration for an interface"),
             )
             .arg(
-                Arg::with_name(OPT_CAPTURE)
+                Arg::new(OPT_CAPTURE)
                     .long(OPT_CAPTURE)
                     .help("Run the capture")
                     .requires(OPT_FIFO),
             )
             .group(
-                ArgGroup::with_name("if_action")
+                ArgGroup::new("if_action")
                     .args(&[OPT_EXTCAP_DTLS, OPT_EXTCAP_CONFIG, OPT_CAPTURE])
                     .multiple(false)
                     .requires(OPT_EXTCAP_INTERFACE),
             )
             .arg(
-                Arg::with_name(OPT_EXTCAP_CAPTURE_FILTER)
+                Arg::new(OPT_EXTCAP_CAPTURE_FILTER)
                     .long(OPT_EXTCAP_CAPTURE_FILTER)
                     .help("The capture filter")
                     .takes_value(true)
@@ -303,7 +302,7 @@ impl<'a> Extcap<'a> {
                     .requires(OPT_CAPTURE),
             )
             .arg(
-                Arg::with_name(OPT_FIFO)
+                Arg::new(OPT_FIFO)
                     .long(OPT_FIFO)
                     .help("Dump data to file or fifo")
                     .takes_value(true)
@@ -322,23 +321,23 @@ impl<'a> Extcap<'a> {
         &self.step
     }
 
-    fn take_app(&mut self) -> App<'a, 'a> {
+    fn take_app(&mut self) -> App<'a> {
         self.app.take().expect("Extcap invalid state: already run")
     }
 
     fn update_app<F>(&mut self, f: F)
     where
-        F: FnOnce(App<'a, 'a>) -> App<'a, 'a>,
+        F: FnOnce(App<'a>) -> App<'a>,
     {
         self.app = Some(f(self.take_app()));
     }
 
-    fn app_arg(&mut self, arg: Arg<'a, 'a>) {
+    fn app_arg(&mut self, arg: Arg<'a>) {
         self.app = Some(self.take_app().arg(arg));
     }
 
     /// Get parsed command line arguments. Provided by `clap::App`.
-    pub fn get_matches(&self) -> &ArgMatches<'a> {
+    pub fn get_matches(&self) -> &ArgMatches {
         self.matches
             .as_ref()
             .expect("Extcap invalid state: not run yet")
@@ -367,7 +366,7 @@ impl<'a> Extcap<'a> {
 
     /// Sets the usage string
     pub fn usage(&mut self, usage: &'a str) {
-        self.update_app(|a| a.usage(usage));
+        self.update_app(|a| a.override_usage(usage));
     }
 
     /// Sets the after-help string
@@ -408,7 +407,7 @@ impl<'a> Extcap<'a> {
             return;
         }
 
-        let mut arg = Arg::with_name(ifa.get_name()).long(ifa.get_name());
+        let mut arg = Arg::new(ifa.get_name()).long(ifa.get_name());
         if let Some(hlp) = ifa.get_display() {
             arg = arg.help(hlp);
         }
@@ -424,7 +423,7 @@ impl<'a> Extcap<'a> {
         }
         self.reload_opt = true;
         self.app_arg(
-            Arg::with_name(OPT_EXTCAP_RELOAD_OPTION)
+            Arg::new(OPT_EXTCAP_RELOAD_OPTION)
                 .long(OPT_EXTCAP_RELOAD_OPTION)
                 .help("Reload values for the given argument")
                 .takes_value(true)
@@ -441,7 +440,7 @@ impl<'a> Extcap<'a> {
         }
         self.control = true;
         self.app_arg(
-            Arg::with_name(OPT_EXTCAP_CONTROL_IN)
+            Arg::new(OPT_EXTCAP_CONTROL_IN)
                 .long(OPT_EXTCAP_CONTROL_IN)
                 .help("The pipe for control messages from toolbar")
                 .takes_value(true)
@@ -449,7 +448,7 @@ impl<'a> Extcap<'a> {
                 .requires(OPT_CAPTURE),
         );
         self.app_arg(
-            Arg::with_name(OPT_EXTCAP_CONTROL_OUT)
+            Arg::new(OPT_EXTCAP_CONTROL_OUT)
                 .long(OPT_EXTCAP_CONTROL_OUT)
                 .help("The pipe for control messages to toolbar")
                 .takes_value(true)
@@ -466,12 +465,12 @@ impl<'a> Extcap<'a> {
         }
         self.ifc_debug = true;
         self.app_arg(
-            Arg::with_name(OPT_DEBUG)
+            Arg::new(OPT_DEBUG)
                 .long(OPT_DEBUG)
                 .help("Print additional messages"),
         );
         self.app_arg(
-            Arg::with_name(OPT_DEBUG_FILE)
+            Arg::new(OPT_DEBUG_FILE)
                 .long(OPT_DEBUG_FILE)
                 .help("Print debug messages to file")
                 .takes_value(true)
@@ -530,7 +529,16 @@ impl<'a> Extcap<'a> {
 
     fn run_till_capture<T: ExtcapListener>(&mut self, listener: &mut T) -> TillCaptureResult<()> {
         // Save matches for listener
-        self.matches = Some(self.take_app().get_matches_safe()?);
+        self.matches = match self.take_app().try_get_matches() {
+            Ok(m) => Some(m),
+            Err(cerr) => match cerr.kind {
+                clap::ErrorKind::DisplayHelp | clap::ErrorKind::DisplayVersion => {
+                    print!("{}", cerr.to_string());
+                    return Ok(TillCaptureOutcome::Finish(()));
+                }
+                _ => return Err(cerr.into()),
+            },
+        };
 
         // Determine the step
         self.step = if self.get_matches().is_present(OPT_EXTCAP_INTERFACES) {
