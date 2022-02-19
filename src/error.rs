@@ -72,7 +72,7 @@ impl From<clap::Error> for ExtcapError {
     fn from(error: clap::Error) -> Self {
         ExtcapError {
             kind: ExtcapErrorKind::Clap,
-            message: format!("{:?}: {}", error.kind, error.to_string()),
+            message: format!("{:?}: {}", error.kind(), error),
         }
     }
 }

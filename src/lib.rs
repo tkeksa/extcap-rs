@@ -44,7 +44,7 @@ use std::fmt::Display;
 use std::fs::File;
 use std::io::{self, Stdout, Write};
 
-use clap::{App, AppSettings, Arg, ArgGroup, ArgMatches};
+use clap::{Arg, ArgGroup, ArgMatches, Command};
 #[cfg(feature = "ctrl-pipe")]
 use futures::future;
 #[cfg(feature = "async-api")]
@@ -232,7 +232,7 @@ type TillCaptureResult<T> = Result<TillCaptureOutcome<T>, ExtcapError>;
 #[derive(Default)]
 pub struct Extcap<'a> {
     step: ExtcapStep,
-    app: Option<App<'a>>,
+    app: Option<Command<'a>>,
     app_args: HashSet<String>, // optional user arguments added from interfaces
     matches: Option<ArgMatches>,
     version: Option<String>,
@@ -248,8 +248,8 @@ pub struct Extcap<'a> {
 impl<'a> Extcap<'a> {
     /// Creates a new instance of an `Extcap` requiring a name.
     pub fn new(name: &'a str) -> Self {
-        let app = App::new(name)
-            .setting(AppSettings::AllowNegativeNumbers)
+        let app = Command::new(name)
+            .allow_negative_numbers(true)
             //.template(HELP_TEMPLATE)
             .arg(
                 Arg::new(OPT_EXTCAP_VERSION)
@@ -321,13 +321,13 @@ impl<'a> Extcap<'a> {
         &self.step
     }
 
-    fn take_app(&mut self) -> App<'a> {
+    fn take_app(&mut self) -> Command<'a> {
         self.app.take().expect("Extcap invalid state: already run")
     }
 
     fn update_app<F>(&mut self, f: F)
     where
-        F: FnOnce(App<'a>) -> App<'a>,
+        F: FnOnce(Command<'a>) -> Command<'a>,
     {
         self.app = Some(f(self.take_app()));
     }
@@ -531,9 +531,9 @@ impl<'a> Extcap<'a> {
         // Save matches for listener
         self.matches = match self.take_app().try_get_matches() {
             Ok(m) => Some(m),
-            Err(cerr) => match cerr.kind {
+            Err(cerr) => match cerr.kind() {
                 clap::ErrorKind::DisplayHelp | clap::ErrorKind::DisplayVersion => {
-                    print!("{}", cerr.to_string());
+                    print!("{}", cerr);
                     return Ok(TillCaptureOutcome::Finish(()));
                 }
                 _ => return Err(cerr.into()),
