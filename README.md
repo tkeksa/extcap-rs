@@ -23,7 +23,7 @@ Dual licensed under your choice of either of:
 [crate-link]: https://crates.io/crates/extcap
 [docs-image]: https://docs.rs/extcap/badge.svg
 [docs-link]: https://docs.rs/extcap/
-[build-image]: https://github.com/tkeksa/extcap-rs/workflows/ci/badge.svg?tag=0.3.0
+[build-image]: https://github.com/tkeksa/extcap-rs/workflows/ci/badge.svg?tag=0.4.0
 [build-link]: https://github.com/tkeksa/extcap-rs/actions
 [deps-image]: https://deps.rs/repo/github/tkeksa/extcap-rs/status.svg
 [deps-link]: https://deps.rs/repo/github/tkeksa/extcap-rs
